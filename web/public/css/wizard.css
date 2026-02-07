@@ -1,0 +1,650 @@
+/* ============================================
+   Wizard Container
+   ============================================ */
+
+.wizard-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--space-8) var(--space-4);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ============================================
+   Wizard Header
+   ============================================ */
+
+.wizard-header {
+    text-align: center;
+    margin-bottom: var(--space-10);
+}
+
+.wizard-logo {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+    letter-spacing: -0.5px;
+}
+
+.wizard-logo span {
+    color: var(--accent-blue);
+}
+
+.wizard-subtitle {
+    color: var(--text-secondary);
+    font-size: 15px;
+}
+
+/* ============================================
+   Step Indicator
+   ============================================ */
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin: var(--space-8) 0;
+}
+
+.step-dot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border-default);
+    background-color: var(--bg-secondary);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    transition: all var(--transition-default);
+    position: relative;
+    z-index: 1;
+}
+
+.step-dot.active {
+    border-color: var(--accent-blue);
+    background-color: var(--accent-blue);
+    color: #ffffff;
+    box-shadow: 0 0 0 4px var(--accent-blue-dim);
+}
+
+.step-dot.completed {
+    border-color: var(--accent-green);
+    background-color: var(--accent-green);
+    color: #ffffff;
+}
+
+.step-line {
+    width: 80px;
+    height: 2px;
+    background-color: var(--border-default);
+    transition: background-color var(--transition-default);
+}
+
+.step-line.completed {
+    background-color: var(--accent-green);
+}
+
+.step-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.step-label-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: color var(--transition-default);
+}
+
+.step-label.active .step-label-text {
+    color: var(--accent-blue);
+    font-weight: 500;
+}
+
+.step-label.completed .step-label-text {
+    color: var(--accent-green);
+}
+
+/* ============================================
+   Step Content
+   ============================================ */
+
+.step-content {
+    flex: 1;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.step-description {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: var(--space-6);
+    line-height: 1.6;
+}
+
+/* ============================================
+   Wizard Welcome
+   ============================================ */
+
+.wizard-welcome {
+    text-align: center;
+    padding: var(--space-12) 0;
+}
+
+.wizard-welcome h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    color: var(--text-primary);
+}
+
+.wizard-welcome p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.7;
+    max-width: 500px;
+    margin: 0 auto var(--space-6);
+}
+
+/* ============================================
+   Device Cards
+   ============================================ */
+
+.device-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.device-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-4) var(--space-5);
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-default);
+}
+
+.device-card:hover {
+    border-color: var(--text-muted);
+    background-color: var(--bg-tertiary);
+}
+
+.device-card.selected {
+    border-color: var(--accent-blue);
+    background-color: rgba(88, 166, 255, 0.08);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.device-card-radio {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border-default);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color var(--transition-default);
+}
+
+.device-card.selected .device-card-radio {
+    border-color: var(--accent-blue);
+}
+
+.device-card-radio::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--accent-blue);
+    transform: scale(0);
+    transition: transform var(--transition-default);
+}
+
+.device-card.selected .device-card-radio::after {
+    transform: scale(1);
+}
+
+.device-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.device-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.device-card-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.device-card-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-quaternary);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+}
+
+.device-card.selected .device-card-index {
+    background-color: var(--accent-blue-dim);
+    color: var(--accent-blue);
+}
+
+/* ============================================
+   Scan Progress
+   ============================================ */
+
+.scan-progress {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.scan-progress-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+}
+
+.scan-progress-percent {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.scan-progress-channel {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.scan-progress .progress-bar {
+    margin-bottom: var(--space-6);
+}
+
+.scan-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+}
+
+.scan-stat {
+    text-align: center;
+    padding: var(--space-3);
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+}
+
+.scan-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.scan-stat-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.scan-transponders {
+    margin-top: var(--space-4);
+}
+
+.scan-transponders h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: var(--space-3);
+}
+
+.scan-transponder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-1);
+    font-size: 13px;
+    animation: fadeIn 0.3s ease;
+}
+
+.scan-transponder-item .channel-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.scan-transponder-item .service-count {
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+/* ============================================
+   Transponder Cards (Step 3)
+   ============================================ */
+
+.transponder-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.transponder-card {
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transition: all var(--transition-default);
+}
+
+.transponder-card:hover {
+    border-color: var(--text-muted);
+}
+
+.transponder-card.selected {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 1px var(--accent-blue);
+}
+
+.transponder-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.transponder-card-header:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.transponder-card-radio {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--border-default);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color var(--transition-default);
+}
+
+.transponder-card.selected .transponder-card-radio {
+    border-color: var(--accent-blue);
+}
+
+.transponder-card-radio::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--accent-blue);
+    transform: scale(0);
+    transition: transform var(--transition-default);
+}
+
+.transponder-card.selected .transponder-card-radio::after {
+    transform: scale(1);
+}
+
+.transponder-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.transponder-card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.transponder-card-channel {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.transponder-card-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: var(--space-1) var(--space-2);
+    background-color: var(--bg-quaternary);
+    border-radius: var(--radius-sm);
+}
+
+.transponder-card-expand {
+    color: var(--text-muted);
+    transition: transform var(--transition-default);
+    font-size: 12px;
+}
+
+.transponder-card.expanded .transponder-card-expand {
+    transform: rotate(180deg);
+}
+
+.transponder-card-services {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--transition-slow);
+    border-top: 1px solid transparent;
+}
+
+.transponder-card.expanded .transponder-card-services {
+    max-height: 500px;
+    border-top-color: var(--border-default);
+}
+
+.transponder-service-list {
+    padding: var(--space-2) var(--space-5) var(--space-4);
+}
+
+.transponder-service {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+}
+
+.transponder-service:hover {
+    background-color: var(--bg-tertiary);
+}
+
+.transponder-service-name {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.transponder-service-meta {
+    display: flex;
+    gap: var(--space-3);
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+/* ============================================
+   Wizard Navigation
+   ============================================ */
+
+.wizard-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: var(--space-8);
+    margin-top: auto;
+    border-top: 1px solid var(--border-default);
+}
+
+.wizard-nav-left {
+    display: flex;
+    gap: var(--space-3);
+}
+
+.wizard-nav-right {
+    display: flex;
+    gap: var(--space-3);
+}
+
+/* ============================================
+   No Devices / No Signals
+   ============================================ */
+
+.wizard-empty {
+    text-align: center;
+    padding: var(--space-12) 0;
+}
+
+.wizard-empty-icon {
+    font-size: 48px;
+    margin-bottom: var(--space-4);
+    opacity: 0.3;
+}
+
+.wizard-empty h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.wizard-empty p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    max-width: 400px;
+    margin: 0 auto var(--space-6);
+    line-height: 1.6;
+}
+
+/* ============================================
+   Manual Channel Selection
+   ============================================ */
+
+.manual-channel-section {
+    margin-top: var(--space-6);
+}
+
+.manual-channel-divider {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+.manual-channel-divider::before,
+.manual-channel-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background-color: var(--border-default);
+}
+
+.manual-channel-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.manual-channel-row select {
+    flex: 1;
+    max-width: 200px;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 640px) {
+    .wizard-container {
+        padding: var(--space-4) var(--space-3);
+    }
+
+    .wizard-header {
+        margin-bottom: var(--space-6);
+    }
+
+    .wizard-logo {
+        font-size: 22px;
+    }
+
+    .step-line {
+        width: 40px;
+    }
+
+    .step-dot {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+    }
+
+    .scan-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .scan-progress-percent {
+        font-size: 22px;
+    }
+
+    .device-card {
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .transponder-card-header {
+        padding: var(--space-3) var(--space-4);
+    }
+
+    .transponder-service-list {
+        padding: var(--space-2) var(--space-3) var(--space-3);
+    }
+}
