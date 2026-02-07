@@ -2,6 +2,8 @@
 
 A Dockerized web application for receiving and streaming DAB+ digital radio using RTL-SDR dongles. Browse and listen to DAB+ radio stations directly in your web browser.
 
+<img width="1287" height="961" alt="image" src="https://github.com/user-attachments/assets/0ed45eb1-91c1-4d86-8ec4-1db0b94d34ed" />
+
 ## Features
 
 - **DAB+ reception** via RTL-SDR USB dongles using [welle-cli](https://github.com/AlbrechtL/welle.io)
