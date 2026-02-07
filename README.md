@@ -6,35 +6,39 @@ A Dockerized web application for receiving and streaming DAB+ digital radio usin
 
 - **DAB+ reception** via RTL-SDR USB dongles using [welle-cli](https://github.com/AlbrechtL/welle.io)
 - **Multi-device support** — manage multiple RTL-SDR dongles with exclusive locking to prevent conflicts
-- **Setup wizard** — guided first-run experience: select a device, scan for channels, pick a transponder
-- **Web-based streaming** — listen to DAB+ stations in any modern browser via HTML5 audio
+- **Setup wizard** — guided first-run experience: select a device, scan for channels or pick a known channel manually, and select a transponder
+- **Manual channel selection** — skip the full scan by selecting a known DAB channel from a dropdown
+- **Web-based streaming** — listen to DAB+ stations in any modern browser via HTML5 audio with pre-buffering
+- **Station logos** — displays station logos from welle-cli MOT/slideshow data when available, with a fallback radio icon
 - **Channel scanning** — automatic scan of all 38 DAB Band III channels (5A through 13F) with live progress
-- **Modular architecture** — four Docker containers with clear separation of concerns
-- **Dark theme UI** — clean, modern interface designed for radio listening
+- **Service filtering** — automatically filters out non-audio services (SPI, EPG, TPEG, etc.) showing only radio stations
+- **RTL-SDR gain control** — configure automatic (AGC) or manual gain via the settings panel
+- **Dark theme UI** — clean, modern interface with bottom-docked player controls
+- **Reset configuration** — return to the setup wizard with a confirmation modal; scan data is preserved
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                     Docker Compose Stack                     │
-│                                                              │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  dab-server   │  │     api      │  │   web-ui     │       │
-│  │  (welle-cli)  │  │  (Node.js)   │  │   (nginx)    │       │
-│  │  Port 8888    │  │  Port 3000   │  │   Port 80    │──┐    │
-│  │  (management) │  │              │  │              │  │    │
-│  │  Port 7979    │  │  Express     │  │  Static      │  │    │
-│  │  (audio)      │  │  REST API    │  │  + Proxy     │  │    │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────┘  │    │
-│         │                  │                             │    │
-│         └──────────────────┘                             │    │
-│              dab-net (internal)                          │    │
-│                                                          │    │
-│  volume: dab-data                                        │    │
-│    setup.json | devices.json | channels.json | locks/    │    │
-└──────────────────────────────────────────────────────────┘    │
-       │                                                        │
-  /dev/bus/usb                                    Host port 8080┘
++--------------------------------------------------------------+
+|                     Docker Compose Stack                      |
+|                                                               |
+|  +--------------+  +--------------+  +--------------+         |
+|  |  dab-server  |  |     api      |  |   web-ui     |         |
+|  |  (welle-cli) |  |  (Node.js)   |  |   (nginx)    |         |
+|  |  Port 8888   |  |  Port 3000   |  |   Port 80    |--+      |
+|  |  (management)|  |              |  |              |  |      |
+|  |  Port 7979   |  |  Express     |  |  Static      |  |      |
+|  |  (audio)     |  |  REST API    |  |  + Proxy     |  |      |
+|  +------+-------+  +------+-------+  +--------------+  |      |
+|         |                  |                            |      |
+|         +------------------+                            |      |
+|              dab-net (internal)                         |      |
+|                                                         |      |
+|  volume: dab-data                                       |      |
+|    setup.json | devices.json | channels.json | locks/   |      |
++--------------------------------------------------------------+
+       |                                                   |
+  /dev/bus/usb                                Host port 8080
   (RTL-SDR)
 ```
 
@@ -42,16 +46,18 @@ A Dockerized web application for receiving and streaming DAB+ digital radio usin
 
 | Service | Role | Technology |
 |---------|------|------------|
-| **dab-server** | DAB+ reception, audio streaming, device enumeration, channel scanning | welle-cli + Python management API |
-| **api** | REST API gateway, setup state, device locking, stream proxying | Node.js / Express |
+| **dab-server** | DAB+ reception, audio streaming, device enumeration, channel scanning, MOT slideshow | welle-cli + Python management API |
+| **api** | REST API gateway, setup state, device locking, stream/slide proxying | Node.js / Express |
 | **web-ui** | Static frontend serving and reverse proxy | nginx |
 
 ### Data Flow
 
 1. **Device detection**: API asks dab-server to enumerate RTL-SDR dongles via `rtl_test`
 2. **Scanning**: API instructs dab-server to scan DAB channels using welle-cli on a specific device
-3. **Streaming**: API starts welle-cli on a device+channel; welle-cli provides MP3 streams at `/mp3/<SID>`
-4. **Playback**: Browser requests `/stream/<SID>` → nginx → API → welle-cli → MP3 audio chunks
+3. **Manual tuning**: Alternatively, the API tunes to a single known channel and discovers services in ~5 seconds
+4. **Streaming**: API starts welle-cli on a device+channel; welle-cli provides MP3 streams at `/mp3/<SID>`
+5. **Playback**: Browser requests `/stream/<SID>` → nginx → API → welle-cli → MP3 audio chunks
+6. **Station logos**: Browser requests `/slide/<SID>` → nginx → API → dab-server → welle-cli → MOT image
 
 ## Prerequisites
 
@@ -92,7 +98,7 @@ rtl_test -t
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url> dab-streamer
+git clone https://github.com/tubalainen/dab-streamer.git
 cd dab-streamer
 ```
 
@@ -114,6 +120,7 @@ Available configuration options:
 | `WELLE_PORT` | `7979` | welle-cli internal streaming port |
 | `API_PORT` | `3000` | API backend internal port |
 | `DEFAULT_CHANNEL` | `5A` | Fallback DAB channel |
+| `DEFAULT_GAIN` | `-1` | RTL-SDR gain (-1 = AGC, 0-49 = manual dB) |
 | `SCAN_TIMEOUT` | `10` | Seconds to wait per channel during scan |
 | `LOCK_REAPER_INTERVAL` | `30` | Seconds between stale lock cleanup |
 | `KEEP_SCAN_DATA_ON_RESET` | `true` | Preserve scan data when restarting setup wizard |
@@ -136,19 +143,23 @@ On first launch, you will be greeted by the setup wizard.
 
 ### Setup Wizard
 
-The setup wizard runs automatically on first launch (or when setup is reset).
+The setup wizard runs automatically on first launch (or when configuration is reset).
 
 **Step 1 — Select Device**
 
-All connected RTL-SDR dongles are detected and listed. Select the device you want to use for DAB+ reception. If only one device is connected, it is automatically selected.
+All connected RTL-SDR dongles are detected and listed. Select the device you want to use for DAB+ reception. If only one device is connected, it is automatically selected. A loading spinner is shown while devices are being detected.
+
+You can also **select a known DAB channel** from the dropdown to skip the full scan. Choose your channel and click "Use This Channel" to tune directly — the system discovers all services on that channel in about 5 seconds.
 
 **Step 2 — Scan Channels**
 
-The system scans all 38 DAB Band III channels (5A through 13F) on your selected device. This takes approximately 6-7 minutes. A progress bar shows the current channel being scanned, and discovered transponders appear in real-time as they are found.
+If you chose to scan, the system scans all 38 DAB Band III channels (5A through 13F) on your selected device. This takes approximately 6-7 minutes. A progress bar shows the current channel being scanned, and discovered transponders appear in real-time as they are found.
+
+This step is skipped when using manual channel selection.
 
 **Step 3 — Select Transponder**
 
-All discovered transponders (DAB ensembles) are listed with their full service lineup — station name, bitrate, and codec for each service. Select the transponder containing the stations you want to listen to.
+All discovered transponders (DAB ensembles) are listed with their audio service lineup — station name, bitrate, and codec for each service. Non-audio services (SPI, EPG, TPEG, etc.) are automatically filtered out. Select the transponder containing the stations you want to listen to.
 
 Click **Save & Listen** to complete setup and enter the radio UI.
 
@@ -156,14 +167,15 @@ Click **Save & Listen** to complete setup and enter the radio UI.
 
 After setup, the main radio interface provides:
 
-- **Station list** — all services on the selected transponder, click to start listening
-- **Now Playing** — current station name, ensemble, bitrate, and codec information
-- **Audio player** — play/pause control and volume slider
-- **Status bar** — active device and channel information
+- **Station list** (sidebar) — all audio services on the selected transponder, click to start listening
+- **Now Playing** (main area) — station logo (when available), station name, ensemble, channel, bitrate, codec, and device info
+- **Audio player** (bottom bar) — play/stop control and volume slider, with pre-buffering for smoother playback
+- **Settings** — gear icon to configure RTL-SDR gain (AGC or manual dB values)
+- **Status bar** — connection status, active device, and application info
 
-### Restarting Setup
+### Resetting Configuration
 
-Click the **Setup** button in the header to restart the setup wizard. This stops any active streaming, releases device locks, and returns to the device selection step. Previous scan data is preserved by default.
+Click the **Reset Configuration** button in the header. A confirmation modal will appear explaining that playback will stop and the wizard will restart. Previous scan data is preserved by default.
 
 ## Multi-Device Support
 
@@ -206,7 +218,7 @@ dab-streamer/
 ├── server/                     # DAB+ server container
 │   ├── Dockerfile              # Ubuntu 24.04 + welle-cli from source
 │   ├── entrypoint.sh           # Starts Python management API
-│   ├── server.py               # HTTP management API (device/scan/stream control)
+│   ├── server.py               # HTTP management API (device/scan/stream/slide control)
 │   ├── detect-devices.sh       # RTL-SDR device enumeration script
 │   └── scan.sh                 # Band III channel scanner script
 │
@@ -220,8 +232,9 @@ dab-streamer/
 │       │   ├── setup.js        # Setup wizard state endpoints
 │       │   ├── devices.js      # Device management endpoints
 │       │   ├── channels.js     # Scan results endpoints
-│       │   ├── tuner.js        # Tuning and stream proxy endpoints
+│       │   ├── tuner.js        # Tuning, stream proxy, slide proxy, tune-discover
 │       │   ├── scanner.js      # Scan control endpoints
+│       │   ├── settings.js     # RTL-SDR gain settings endpoints
 │       │   └── health.js       # Health check endpoint
 │       └── services/
 │           ├── setup-store.js  # Wizard state persistence
@@ -237,17 +250,17 @@ dab-streamer/
 │       ├── index.html          # Single page shell
 │       ├── css/
 │       │   ├── variables.css   # Theme tokens
-│       │   ├── components.css  # Shared component styles
+│       │   ├── components.css  # Shared component styles (modals, buttons)
 │       │   ├── wizard.css      # Setup wizard styles
-│       │   └── layout.css      # Radio mode layout
+│       │   └── layout.css      # Radio mode grid layout
 │       └── js/
 │           ├── app.js          # Entry point and mode switching
 │           ├── api.js          # Backend HTTP client
-│           ├── wizard.js       # Setup wizard controller
+│           ├── wizard.js       # Setup wizard controller (scan + manual channel)
 │           ├── devices.js      # Device card rendering
-│           ├── player.js       # HTML5 audio controller
-│           ├── channels.js     # Station list UI
-│           ├── nowplaying.js   # Now-playing display
+│           ├── player.js       # HTML5 audio controller with pre-buffering
+│           ├── channels.js     # Station list UI with service filtering
+│           ├── nowplaying.js   # Now-playing display with station logos
 │           └── scanner.js      # Scan progress UI
 │
 └── data/                       # Runtime data (Docker volume, gitignored)
@@ -296,8 +309,17 @@ dab-streamer/
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/api/tune` | Tune a device to a channel |
+| `POST` | `/api/tune-discover` | Tune to a channel and discover services (manual channel selection) |
 | `GET` | `/api/current` | Currently active stream info |
 | `GET` | `/api/stream/:sid` | Audio stream proxy (MP3) |
+| `GET` | `/api/slide/:sid` | Station logo proxy (MOT/slideshow image) |
+
+### Settings
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/settings` | Current RTL-SDR settings (gain) |
+| `POST` | `/api/settings` | Update RTL-SDR settings (gain: -1 for AGC, 0-49 for manual dB) |
 
 ### Health
 
@@ -332,9 +354,9 @@ The scanner iterates all 38 standard channels:
 7A  7B  7C  7D
 8A  8B  8C  8D
 9A  9B  9C  9D
-10A 10B 10C 10D
-11A 11B 11C 11D
-12A 12B 12C 12D
+10A 10B 10C 10D 10N
+11A 11B 11C 11D 11N
+12A 12B 12C 12D 12N
 13A 13B 13C 13D 13E 13F
 ```
 
@@ -355,6 +377,7 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 - Verify your area has DAB+ coverage — check your national DAB coverage map
 - Try positioning the antenna near a window or higher location
 - Increase `SCAN_TIMEOUT` in `.env` (default 10 seconds per channel)
+- Try **manual channel selection** if you know your local DAB channel — this is faster and avoids a full scan
 
 ### Audio stream not playing
 
@@ -374,7 +397,14 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 - A previous scan or stream may not have released its lock
 - The stale lock reaper runs every 30 seconds by default
 - Force unlock by restarting the API: `docker compose restart api`
-- Or reset via the UI: click the Setup button to restart the wizard
+- Or reset via the UI: click **Reset Configuration** to restart the wizard
+
+### Station names showing as "Service 0x..."
+
+- This can happen if the receiver didn't have enough time to resolve service labels from the DAB FIC (Fast Information Channel)
+- The tune-discover endpoint waits 4 seconds after services first appear for labels to resolve
+- If using manual channel selection and names are missing, try resetting and selecting the channel again
+- Full channel scans (10 seconds per channel) generally resolve all labels
 
 ## Technology Stack
 
