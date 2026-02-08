@@ -94,12 +94,19 @@ function doFetch(key) {
             const res = await fetch(`/slide/${key}`);
             if (!res.ok) {
                 failedAt.set(key, Date.now());
+                cache.delete(key);
                 return null;
             }
             const blob = await res.blob();
             if (blob.size === 0) {
                 failedAt.set(key, Date.now());
+                cache.delete(key);
                 return null;
+            }
+            // Defensively revoke any stale blob URL before creating a new one
+            const prev = cache.get(key);
+            if (prev && prev.blobUrl) {
+                URL.revokeObjectURL(prev.blobUrl);
             }
             const blobUrl = URL.createObjectURL(blob);
             cache.set(key, { blobUrl, loading: null });
@@ -107,14 +114,11 @@ function doFetch(key) {
             return blobUrl;
         } catch {
             failedAt.set(key, Date.now());
+            cache.delete(key);
             return null;
         }
     })();
 
     cache.set(key, { blobUrl: null, loading });
-    const result = loading.then(url => {
-        if (!url) cache.delete(key);
-        return url;
-    });
-    return result;
+    return loading;
 }

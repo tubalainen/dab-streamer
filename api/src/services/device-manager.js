@@ -10,7 +10,7 @@ const config = require('../config');
  */
 function httpGet(url) {
   return new Promise((resolve, reject) => {
-    http.get(url, (res) => {
+    const req = http.get(url, (res) => {
       let body = '';
       res.on('data', (chunk) => { body += chunk; });
       res.on('end', () => {
@@ -21,7 +21,12 @@ function httpGet(url) {
         }
       });
       res.on('error', reject);
-    }).on('error', reject);
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => {
+      req.destroy();
+      reject(new Error(`Request to ${url} timed out after 10s`));
+    });
   });
 }
 

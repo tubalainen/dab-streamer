@@ -2,6 +2,8 @@
  * DAB+ Radio Streamer — Scan Progress UI Helper
  */
 
+import { escapeHtml, getEnsembleLabel } from './utils.js';
+
 /**
  * Render the scan progress display.
  * @param {HTMLElement} container - Container to render into
@@ -93,36 +95,3 @@ export function renderScanComplete(container, transponderCount, serviceCount) {
     `;
 }
 
-/**
- * Safely extract a label string from a welle-cli label field.
- */
-function extractLabel(val) {
-    if (!val) return null;
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object' && typeof val.label === 'string') return val.label;
-    if (typeof val === 'object' && val.label) return extractLabel(val.label);
-    return null;
-}
-
-/**
- * Safely extract the ensemble label from a transponder object.
- */
-function getEnsembleLabel(tp) {
-    if (!tp) return 'Unknown';
-    const e = tp.ensemble;
-    if (!e) return tp.channel || 'Unknown';
-    if (typeof e === 'string') return e;
-    if (typeof e === 'object') {
-        const label = extractLabel(e.label);
-        if (label) return label;
-    }
-    return tp.channel || 'Unknown';
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    if (typeof str !== 'string') str = String(str);
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
