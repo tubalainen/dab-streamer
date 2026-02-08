@@ -1,11 +1,11 @@
 FROM node:20-alpine
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl su-exec
 WORKDIR /app
 COPY package.json ./
 RUN npm install --production
 COPY src/ ./src/
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENV NODE_ENV=production
-RUN mkdir -p /data/locks /data/logos && chown -R node:node /data
-USER node
 EXPOSE 3000
-CMD ["node", "src/index.js"]
+ENTRYPOINT ["/entrypoint.sh"]
