@@ -2,6 +2,8 @@
 
 const { Router } = require('express');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const dabBackend = require('../services/dab-backend');
 const channelStore = require('../services/channel-store');
 const config = require('../config');
@@ -252,10 +254,17 @@ function extractLabel(val) {
 
 /**
  * GET /api/slide/:sid
- * Proxy the station logo/slideshow image from welle-cli (through dab-server).
+ * Serve station logo with persistent disk cache.
+ *
+ * Strategy:
+ *   1. Try to fetch live from welle-cli (only works for the actively decoded station)
+ *   2. If live succeeds, save/update the disk cache and serve it
+ *   3. If live fails (404 — station not being decoded), serve from disk cache
+ *   4. If neither is available, return 404
  */
 router.get('/slide/:sid', (req, res) => {
   const sid = req.params.sid;
+  const cacheFile = path.join(config.LOGOS_DIR, `${sid}.img`);
   const slideUrl = `${config.DAB_SERVER_URL}/slide/${sid}`;
 
   const parsed = new URL(slideUrl);
@@ -266,26 +275,46 @@ router.get('/slide/:sid', (req, res) => {
     method: 'GET',
     timeout: 5000,
   }, (proxyRes) => {
-    if (proxyRes.statusCode === 404) {
-      return res.status(404).json({ error: 'No slide available' });
+    if (proxyRes.statusCode !== 200) {
+      // Live fetch failed — try disk cache
+      proxyRes.resume(); // drain the response
+      return serveCachedLogo(sid, cacheFile, res);
     }
-    res.writeHead(proxyRes.statusCode, {
-      'Content-Type': proxyRes.headers['content-type'] || 'image/png',
-      'Cache-Control': 'no-cache',
+
+    // Live fetch succeeded — collect data, cache to disk, and serve
+    const contentType = proxyRes.headers['content-type'] || 'image/png';
+    const chunks = [];
+    proxyRes.on('data', (chunk) => chunks.push(chunk));
+    proxyRes.on('end', () => {
+      const imageData = Buffer.concat(chunks);
+      if (imageData.length === 0) {
+        return serveCachedLogo(sid, cacheFile, res);
+      }
+
+      // Save to disk cache (async, don't block response)
+      saveLogo(sid, cacheFile, imageData, contentType);
+
+      // Serve the live image
+      res.writeHead(200, {
+        'Content-Type': contentType,
+        'Content-Length': imageData.length,
+        'Cache-Control': 'no-cache',
+        'X-Logo-Source': 'live',
+      });
+      res.end(imageData);
     });
-    proxyRes.pipe(res);
   });
 
   proxyReq.on('error', () => {
     if (!res.headersSent) {
-      res.status(502).json({ error: 'Failed to fetch slide' });
+      serveCachedLogo(sid, cacheFile, res);
     }
   });
 
   proxyReq.on('timeout', () => {
     proxyReq.destroy();
     if (!res.headersSent) {
-      res.status(504).json({ error: 'Slide fetch timed out' });
+      serveCachedLogo(sid, cacheFile, res);
     }
   });
 
@@ -295,6 +324,55 @@ router.get('/slide/:sid', (req, res) => {
 
   proxyReq.end();
 });
+
+/**
+ * Serve a cached logo from disk, or 404 if no cache exists.
+ */
+function serveCachedLogo(sid, cacheFile, res) {
+  const metaFile = cacheFile + '.meta';
+  if (!fs.existsSync(cacheFile)) {
+    return res.status(404).json({ error: 'No logo available' });
+  }
+  try {
+    const imageData = fs.readFileSync(cacheFile);
+    let contentType = 'image/png';
+    if (fs.existsSync(metaFile)) {
+      try {
+        const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+        contentType = meta.contentType || 'image/png';
+      } catch { /* use default */ }
+    }
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Content-Length': imageData.length,
+      'Cache-Control': 'max-age=300',
+      'X-Logo-Source': 'cache',
+    });
+    res.end(imageData);
+  } catch (err) {
+    console.error(`[tuner] Failed to read cached logo for ${sid}:`, err.message);
+    res.status(404).json({ error: 'No logo available' });
+  }
+}
+
+/**
+ * Save a logo to the persistent disk cache.
+ * Compares with existing cache to avoid unnecessary writes.
+ */
+function saveLogo(sid, cacheFile, imageData, contentType) {
+  try {
+    // Skip write if file exists with same size (likely unchanged)
+    if (fs.existsSync(cacheFile)) {
+      const stat = fs.statSync(cacheFile);
+      if (stat.size === imageData.length) return;
+    }
+    fs.writeFileSync(cacheFile, imageData);
+    fs.writeFileSync(cacheFile + '.meta', JSON.stringify({ contentType, updated: Date.now() }));
+    console.log(`[logo-cache] Saved logo for SID ${sid} (${imageData.length} bytes)`);
+  } catch (err) {
+    console.error(`[logo-cache] Failed to save logo for SID ${sid}:`, err.message);
+  }
+}
 
 /**
  * GET /api/dls/:sid
@@ -315,6 +393,7 @@ router.get('/dls/:sid', async (req, res) => {
     }
 
     const dls = svc.dls || {};
+    const mot = svc.mot || {};
     const dlsLabel = typeof dls.label === 'string' ? dls.label : (extractLabel(dls.label) || '');
 
     res.json({
@@ -322,6 +401,7 @@ router.get('/dls/:sid', async (req, res) => {
       dls: dlsLabel,
       dlsTime: dls.time || 0,
       dlsLastChange: dls.lastchange || 0,
+      motLastChange: mot.lastchange || 0,
       pty: svc.ptystring || '',
       audioLevel: svc.audiolevel || null,
     });

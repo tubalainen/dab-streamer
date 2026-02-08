@@ -42,8 +42,8 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    // Skip logging for stream proxying (too noisy) and health checks
-    if (!req.path.startsWith('/api/stream/') && req.path !== '/api/status') {
+    // Skip logging for high-frequency polling endpoints
+    if (!req.path.startsWith('/api/stream/') && !req.path.startsWith('/api/dls/') && !req.path.startsWith('/api/slide/') && req.path !== '/api/status') {
       console.log(`${req.method} ${req.path} ${res.statusCode} ${duration}ms`);
     }
   });
@@ -159,6 +159,15 @@ function startLockReaper() {
     }
   }, intervalMs);
 }
+
+// Ensure persistent directories exist
+const fs = require('fs');
+[config.LOCKS_DIR, config.LOGOS_DIR].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`[startup] Created directory: ${dir}`);
+  }
+});
 
 // Start the server
 app.listen(config.API_PORT, () => {
