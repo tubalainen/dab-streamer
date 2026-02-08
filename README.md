@@ -431,7 +431,6 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 
 The following hardening measures are applied:
 
-- **Non-root API container** — the Node.js API runs as the unprivileged `node` user (the dab-server container requires root for USB device access)
 - **No privileged mode** — the dab-server container uses explicit USB device mapping (`/dev/bus/usb`) instead of Docker's `privileged` flag
 - **CORS restriction** — the API only reflects `Access-Control-Allow-Origin` for same-host origins (configurable via `CORS_ORIGIN`)
 - **Request body limit** — Express JSON parser limited to 1 MB to mitigate oversized payloads
