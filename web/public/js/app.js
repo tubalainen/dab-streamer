@@ -8,9 +8,9 @@
 
 import * as api from './api.js';
 import { initWizard } from './wizard.js';
-import { initPlayer, play, stop, getState, setStationName } from './player.js';
+import { initPlayer, play, stop, getState, setStationName, setDls } from './player.js';
 import { initChannelList, loadChannels, setActiveStation } from './channels.js';
-import { initNowPlaying, update as updateNowPlaying, clear as clearNowPlaying } from './nowplaying.js';
+import { initNowPlaying, update as updateNowPlaying, clear as clearNowPlaying, onDlsChange } from './nowplaying.js';
 
 const appEl = document.getElementById('app');
 
@@ -162,6 +162,9 @@ function initRadioMode() {
     initPlayer(playerEl);
     initNowPlaying(nowPlayingEl);
     initChannelList(sidebarEl, onStationSelect);
+
+    // Wire DLS updates from now-playing to player bar
+    onDlsChange((dlsText) => setDls(dlsText));
 
     // Reset Configuration button — show confirmation modal
     document.getElementById('btn-setup').addEventListener('click', () => {

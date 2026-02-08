@@ -7,7 +7,8 @@ let containerEl = null;
 let state = 'stopped'; // 'stopped' | 'loading' | 'playing' | 'error'
 let currentSid = null;
 let currentStationName = null;
-let currentVolume = 0.8;
+let currentVolume = 0.6;
+let currentDlsText = '';
 
 // SVG icons
 const ICON_PLAY = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
@@ -109,19 +110,29 @@ export function stop() {
     state = 'stopped';
     currentSid = null;
     currentStationName = null;
+    currentDlsText = '';
     render();
 }
 
 /**
  * Set volume level.
  * @param {number} level - Volume from 0.0 to 1.0
+ * @param {boolean} skipRender - If true, skip full re-render (used during slider drag)
  */
-export function setVolume(level) {
+export function setVolume(level, skipRender = false) {
     currentVolume = Math.max(0, Math.min(1, level));
     if (audioEl) {
         audioEl.volume = currentVolume;
     }
-    render();
+    if (skipRender) {
+        // Update mute icon without destroying the slider
+        const iconEl = containerEl && containerEl.querySelector('.player-volume-icon');
+        if (iconEl) {
+            iconEl.innerHTML = currentVolume === 0 ? ICON_VOLUME_MUTE : ICON_VOLUME;
+        }
+    } else {
+        render();
+    }
 }
 
 /**
@@ -131,6 +142,20 @@ export function setVolume(level) {
 export function setStationName(name) {
     currentStationName = name;
     render();
+}
+
+/**
+ * Set the DLS (Dynamic Label Segment) text for the player bar.
+ * Updates the status line in-place without a full re-render to preserve volume slider state.
+ * @param {string} text - DLS text (empty string to clear)
+ */
+export function setDls(text) {
+    currentDlsText = text || '';
+    // Update status text in-place if playing (avoid destroying slider)
+    const statusEl = containerEl && containerEl.querySelector('.player-info-status');
+    if (statusEl && state === 'playing') {
+        statusEl.textContent = currentDlsText || 'Playing';
+    }
 }
 
 /**
@@ -164,7 +189,7 @@ function render() {
             <div class="player-info-station">${currentStationName || (currentSid ? `Service ${currentSid}` : 'No station selected')}</div>
             <div class="player-info-status ${state}">
                 ${isLoading ? '<span class="spinner spinner-sm spinner-inline"></span> Buffering...' : ''}
-                ${isPlaying ? 'Playing' : ''}
+                ${isPlaying ? (currentDlsText || 'Playing') : ''}
                 ${state === 'stopped' ? (currentSid ? 'Stopped' : 'Select a station') : ''}
                 ${state === 'error' ? 'Stream error' : ''}
             </div>
@@ -185,15 +210,15 @@ function render() {
         }
     });
 
-    // Volume slider
+    // Volume slider — use skipRender to avoid destroying the slider during drag
     const volumeSlider = containerEl.querySelector('.player-volume-slider');
     volumeSlider.addEventListener('input', (e) => {
-        setVolume(parseInt(e.target.value, 10) / 100);
+        setVolume(parseInt(e.target.value, 10) / 100, true);
     });
 
-    // Mute toggle
+    // Mute toggle — full render needed to update slider position
     const volumeIcon = containerEl.querySelector('.player-volume-icon');
-    let volumeBeforeMute = currentVolume || 0.8;
+    let volumeBeforeMute = currentVolume || 0.6;
     volumeIcon.addEventListener('click', () => {
         if (currentVolume > 0) {
             volumeBeforeMute = currentVolume;

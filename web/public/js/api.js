@@ -116,6 +116,10 @@ export async function getCurrentInfo() {
     return request('GET', '/current');
 }
 
+export async function getDLS(sid) {
+    return request('GET', `/dls/${sid}`);
+}
+
 // ─── Settings ──────────────────────────────────────────
 
 export async function getSettings() {

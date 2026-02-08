@@ -296,4 +296,39 @@ router.get('/slide/:sid', (req, res) => {
   proxyReq.end();
 });
 
+/**
+ * GET /api/dls/:sid
+ * Get the Dynamic Label Segment (now-playing text) for a service.
+ * Extracts DLS, programme type, and audio level from /mux.json.
+ */
+router.get('/dls/:sid', async (req, res) => {
+  const sid = req.params.sid;
+  try {
+    const mux = await dabBackend.getCurrentEnsemble();
+    if (!mux || !mux.services) {
+      return res.status(502).json({ error: 'No ensemble data available' });
+    }
+
+    const svc = mux.services.find(s => String(s.sid) === String(sid));
+    if (!svc) {
+      return res.status(404).json({ error: 'Service not found' });
+    }
+
+    const dls = svc.dls || {};
+    const dlsLabel = typeof dls.label === 'string' ? dls.label : (extractLabel(dls.label) || '');
+
+    res.json({
+      sid,
+      dls: dlsLabel,
+      dlsTime: dls.time || 0,
+      dlsLastChange: dls.lastchange || 0,
+      pty: svc.ptystring || '',
+      audioLevel: svc.audiolevel || null,
+    });
+  } catch (err) {
+    console.error('[tuner] Failed to get DLS:', err.message);
+    res.status(502).json({ error: 'Failed to get DLS', details: err.message });
+  }
+});
+
 module.exports = router;

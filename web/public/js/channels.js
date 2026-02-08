@@ -2,6 +2,14 @@
  * DAB+ Radio Streamer — Channel / Station List UI
  */
 
+import { getCachedLogo, fetchAndCacheLogo } from './logo-cache.js';
+
+// Simplified radio icon for station thumbnails
+const FALLBACK_THUMB_ICON = `<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="20" width="56" height="38" rx="6" stroke="currentColor" stroke-width="4"/>
+    <circle cx="24" cy="39" r="10" stroke="currentColor" stroke-width="4"/>
+</svg>`;
+
 let containerEl = null;
 let selectCallback = null;
 let currentTransponders = [];
@@ -103,25 +111,38 @@ function render() {
             <ul class="station-list">
     `;
 
+    // Collect all audio services across transponders, then sort alphabetically
+    const allAudioServices = [];
     currentTransponders.forEach((tp) => {
         const audioServices = filterAudioServices(tp.services);
-        if (audioServices.length === 0) return;
-
         audioServices.forEach((svc) => {
-            const isActive = String(svc.sid) === String(activeSid);
-            const bitrate = svc.bitrate ? `${svc.bitrate}k` : '';
-
-            html += `
-                <li class="station-item ${isActive ? 'active' : ''}"
-                    data-sid="${escapeAttr(String(svc.sid || ''))}"
-                    data-name="${escapeAttr(svc.name || '')}"
-                    data-channel="${escapeAttr(tp.channel || '')}">
-                    <span class="station-item-indicator"></span>
-                    <span class="station-item-name">${escapeHtml(svc.name || svc.label || `Service ${svc.sid}`)}</span>
-                    <span class="station-item-bitrate">${escapeHtml(bitrate)}</span>
-                </li>
-            `;
+            allAudioServices.push({ svc, tp });
         });
+    });
+    allAudioServices.sort((a, b) => {
+        const nameA = (a.svc.name || a.svc.label || '').toLowerCase();
+        const nameB = (b.svc.name || b.svc.label || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
+    allAudioServices.forEach(({ svc, tp }) => {
+        const isActive = String(svc.sid) === String(activeSid);
+        const bitrate = svc.bitrate ? `${svc.bitrate}k` : '';
+        const cachedUrl = getCachedLogo(svc.sid);
+        const thumbContent = cachedUrl
+            ? `<img src="${cachedUrl}" alt="" class="station-item-thumb-img">`
+            : `<span class="station-item-thumb-fallback">${FALLBACK_THUMB_ICON}</span>`;
+
+        html += `
+            <li class="station-item ${isActive ? 'active' : ''}"
+                data-sid="${escapeAttr(String(svc.sid || ''))}"
+                data-name="${escapeAttr(svc.name || '')}"
+                data-channel="${escapeAttr(tp.channel || '')}">
+                <span class="station-item-thumb" data-thumb-sid="${escapeAttr(String(svc.sid || ''))}">${thumbContent}</span>
+                <span class="station-item-name">${escapeHtml(svc.name || svc.label || `Service ${svc.sid}`)}</span>
+                <span class="station-item-bitrate">${escapeHtml(bitrate)}</span>
+            </li>
+        `;
     });
 
     html += `
@@ -156,6 +177,18 @@ function render() {
             activeChannelName = channel;
             render();
         });
+    });
+
+    // Background-fetch logos for stations without cached thumbnails
+    containerEl.querySelectorAll('.station-item-thumb[data-thumb-sid]').forEach((el) => {
+        const sid = el.dataset.thumbSid;
+        if (!getCachedLogo(sid)) {
+            fetchAndCacheLogo(sid).then(blobUrl => {
+                if (blobUrl && el.isConnected) {
+                    el.innerHTML = `<img src="${blobUrl}" alt="" class="station-item-thumb-img">`;
+                }
+            });
+        }
     });
 }
 
