@@ -2,6 +2,7 @@
  * DAB+ Radio Streamer — Now Playing Panel
  */
 
+import { escapeHtml } from './utils.js';
 import { getCachedLogo, fetchAndCacheLogo, retryLogo, refreshLogo } from './logo-cache.js';
 import { getDLS } from './api.js';
 
@@ -10,6 +11,7 @@ let currentInfo = null;
 
 // DLS polling state
 let dlsInterval = null;
+let dlsPollGeneration = 0;
 let currentDlsText = '';
 let lastDlsChange = 0;
 let lastMotChange = 0;
@@ -189,9 +191,11 @@ function updateLogoEverywhere(sid, blobUrl) {
 
 function startDlsPolling(sid) {
     stopDlsPolling();
+    dlsPollGeneration++;
+    const generation = dlsPollGeneration;
     // Initial fetch after a short delay (give stream time to start)
-    setTimeout(() => pollDls(sid), 1500);
-    dlsInterval = setInterval(() => pollDls(sid), 3000);
+    setTimeout(() => pollDls(sid, generation), 1500);
+    dlsInterval = setInterval(() => pollDls(sid, generation), 3000);
 }
 
 function stopDlsPolling() {
@@ -201,15 +205,19 @@ function stopDlsPolling() {
     }
 }
 
-async function pollDls(sid) {
-    // Stop polling if station changed or cleared
-    if (!currentInfo || String(currentInfo.sid) !== String(sid)) {
+async function pollDls(sid, generation) {
+    // Stop polling if station changed, cleared, or superseded by a new poll
+    if (!currentInfo || String(currentInfo.sid) !== String(sid) || generation !== dlsPollGeneration) {
         stopDlsPolling();
         return;
     }
 
     try {
         const data = await getDLS(sid);
+
+        // Re-check generation after await to guard against race
+        if (generation !== dlsPollGeneration) return;
+
         if (!data) return;
 
         // Only update DOM when the DLS content actually changed
@@ -228,6 +236,7 @@ async function pollDls(sid) {
             if (hadPreviousMot) {
                 // MOT changed while we're listening — invalidate cache and re-fetch
                 const blobUrl = await refreshLogo(sid);
+                if (generation !== dlsPollGeneration) return;
                 if (blobUrl) {
                     updateLogoEverywhere(sid, blobUrl);
                 }
@@ -235,6 +244,7 @@ async function pollDls(sid) {
                 // First MOT data received — fetch if not already cached
                 if (!getCachedLogo(sid)) {
                     const blobUrl = await retryLogo(sid);
+                    if (generation !== dlsPollGeneration) return;
                     if (blobUrl) {
                         updateLogoEverywhere(sid, blobUrl);
                     }
@@ -249,6 +259,7 @@ async function pollDls(sid) {
     // Retry logo if not yet cached for the active station (no MOT data yet)
     if (!getCachedLogo(sid)) {
         const blobUrl = await retryLogo(sid);
+        if (generation !== dlsPollGeneration) return;
         if (blobUrl) {
             updateLogoEverywhere(sid, blobUrl);
         }
@@ -267,9 +278,3 @@ function updateDlsDisplay(text) {
     }, 200);
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}

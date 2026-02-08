@@ -21,26 +21,27 @@ A Dockerized web application for receiving and streaming DAB+ digital radio usin
 ## Architecture
 
 ```
-+--------------------------------------------------------------+
-|                     Docker Compose Stack                      |
-|                                                               |
-|  +--------------+  +--------------+  +--------------+         |
-|  |  dab-server  |  |     api      |  |   web-ui     |         |
-|  |  (welle-cli) |  |  (Node.js)   |  |   (nginx)    |         |
-|  |  Port 8888   |  |  Port 3000   |  |   Port 80    |--+      |
-|  |  (management)|  |              |  |              |  |      |
-|  |  Port 7979   |  |  Express     |  |  Static      |  |      |
-|  |  (audio)     |  |  REST API    |  |  + Proxy     |  |      |
-|  +------+-------+  +------+-------+  +--------------+  |      |
-|         |                  |                            |      |
-|         +------------------+                            |      |
-|              dab-net (internal)                         |      |
-|                                                         |      |
-|  volume: dab-data                                       |      |
-|    setup.json | devices.json | channels.json | locks/   |      |
-+--------------------------------------------------------------+
-       |                                                   |
-  /dev/bus/usb                                Host port 8080
++---------------------------------------------------------------------+
+|                        Docker Compose Stack                          |
+|                                                                      |
+|  +--------------+  +--------------+  +--------------+                |
+|  |  dab-server  |  |     api      |  |   web-ui     |                |
+|  |  (welle-cli) |  |  (Node.js)   |  |   (nginx)    |                |
+|  |  Port 8888   |  |  Port 3000   |  |   Port 80    |--+             |
+|  |  (management)|  |              |  |              |  |             |
+|  |  Port 7979   |  |  Express     |  |  Static      |  |             |
+|  |  (audio)     |  |  REST API    |  |  + Proxy     |  |             |
+|  +------+-------+  +------+-------+  +--------------+  |             |
+|         |                  |                            |             |
+|         +------------------+                            |             |
+|              dab-net (internal)                         |             |
+|                                                         |             |
+|  volume: dab-data                                       |             |
+|    setup.json | devices.json | channels.json            |             |
+|    locks/ | logos/                                       |             |
++---------------------------------------------------------------------+
+       |                                                          |
+  /dev/bus/usb                                       Host port 8080
   (RTL-SDR)
 ```
 
@@ -126,6 +127,7 @@ Available configuration options:
 | `SCAN_TIMEOUT` | `10` | Seconds to wait per channel during scan |
 | `LOCK_REAPER_INTERVAL` | `30` | Seconds between stale lock cleanup |
 | `KEEP_SCAN_DATA_ON_RESET` | `true` | Preserve scan data when restarting setup wizard |
+| `CORS_ORIGIN` | _(unset)_ | Explicit allowed CORS origin (e.g. `http://myhost:8080`). When unset, only same-host origins are allowed |
 
 ### 3. Build and start
 
@@ -212,7 +214,6 @@ dab-streamer/
 ├── .env.example                # Documented config template
 ├── .gitignore
 ├── README.md
-├── PLAN.md                     # Detailed architecture plan
 │
 ├── base/                       # Shared base image (build reference)
 │   └── Dockerfile
@@ -263,13 +264,16 @@ dab-streamer/
 │           ├── player.js       # HTML5 audio controller with pre-buffering
 │           ├── channels.js     # Station list UI with service filtering
 │           ├── nowplaying.js   # Now-playing display with station logos
-│           └── scanner.js      # Scan progress UI
+│           ├── scanner.js      # Scan progress UI
+│           ├── logo-cache.js   # Station logo blob URL cache
+│           └── utils.js        # Shared utilities (escapeHtml, filtering, labels)
 │
 └── data/                       # Runtime data (Docker volume, gitignored)
     ├── setup.json              # Wizard state
     ├── devices.json            # Device registry
     ├── channels.json           # Scan results
-    └── locks/                  # Device lock files
+    ├── locks/                  # Device lock files
+    └── logos/                  # Cached station logos (MOT images)
 ```
 
 ## API Reference
@@ -314,6 +318,7 @@ dab-streamer/
 | `POST` | `/api/tune-discover` | Tune to a channel and discover services (manual channel selection) |
 | `GET` | `/api/current` | Currently active stream info |
 | `GET` | `/api/stream/:sid` | Audio stream proxy (MP3) |
+| `GET` | `/api/dls/:sid` | Dynamic Label Segment text and MOT change timestamps |
 | `GET` | `/api/slide/:sid` | Station logo proxy (MOT/slideshow image) |
 
 ### Settings
@@ -339,6 +344,7 @@ All runtime state is stored as JSON files on the `dab-data` Docker volume, mount
 | `devices.json` | Detected RTL-SDR device registry with labels | API |
 | `channels.json` | Per-device scan results (transponders and services) | API |
 | `locks/device-N.lock` | Exclusive device lock files | API |
+| `logos/<SID>.img` | Cached station logos (MOT slideshow images) | API |
 
 Data persists across container restarts. To fully reset the application, remove the Docker volume:
 
@@ -420,6 +426,19 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 | Frontend | Vanilla HTML5/CSS3/JS | ES Modules |
 | Containerization | Docker Compose | v2 |
 | SDR library | librtlsdr | System package |
+
+## Security
+
+The following hardening measures are applied:
+
+- **No privileged mode** — the dab-server container uses explicit USB device mapping (`/dev/bus/usb`) instead of Docker's `privileged` flag
+- **CORS restriction** — the API only reflects `Access-Control-Allow-Origin` for same-host origins (configurable via `CORS_ORIGIN`)
+- **Request body limit** — Express JSON parser limited to 1 MB to mitigate oversized payloads
+- **Input validation** — DAB channel names, device indices, gain values, and service IDs are validated server-side before use
+- **HTTP timeouts** — upstream requests to the dab-server time out after 10 seconds; curl calls in scan scripts have connect and max-time limits
+- **Security headers** — nginx adds `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` headers
+- **Resource limits** — Docker memory limits and log rotation prevent runaway resource consumption
+- **`.dockerignore` files** — prevent `node_modules`, `.git`, and other unnecessary files from entering container images
 
 ## License
 

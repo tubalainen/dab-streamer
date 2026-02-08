@@ -7,6 +7,7 @@
  */
 
 import * as api from './api.js';
+import { escapeHtml, getEnsembleLabel } from './utils.js';
 import { initWizard } from './wizard.js';
 import { initPlayer, play, stop, getState, setStationName, setDls } from './player.js';
 import { initChannelList, loadChannels, setActiveStation } from './channels.js';
@@ -139,6 +140,19 @@ function initRadioMode() {
                 </div>
             </div>
 
+            <div class="confirm-modal" id="retune-modal" style="display:none;">
+                <div class="confirm-overlay" id="retune-overlay"></div>
+                <div class="confirm-content">
+                    <h3>Re-tune Required</h3>
+                    <p>Gain setting saved. A re-tune is needed for the change to take effect.</p>
+                    <p class="text-muted" style="font-size: 13px;">Re-tune now?</p>
+                    <div class="confirm-actions">
+                        <button class="btn btn-secondary btn-sm" id="btn-retune-cancel">Later</button>
+                        <button class="btn btn-primary btn-sm" id="btn-retune-confirm">Re-tune Now</button>
+                    </div>
+                </div>
+            </div>
+
             <footer class="status-bar">
                 <div class="status-bar-left">
                     <div class="status-bar-item">
@@ -198,6 +212,24 @@ function initRadioMode() {
     document.getElementById('settings-overlay').addEventListener('click', closeSettings);
     document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
     document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
+
+    // Re-tune modal
+    document.getElementById('retune-overlay').addEventListener('click', closeRetuneModal);
+    document.getElementById('btn-retune-cancel').addEventListener('click', closeRetuneModal);
+    document.getElementById('btn-retune-confirm').addEventListener('click', async () => {
+        closeRetuneModal();
+        const deviceIndex = setupData.selected_device ? setupData.selected_device.index : 0;
+        const channel = setupData.selected_transponder
+            ? setupData.selected_transponder.channel
+            : null;
+        if (channel) {
+            try {
+                await api.tune(deviceIndex, channel);
+            } catch (err) {
+                console.error('Re-tune failed:', err);
+            }
+        }
+    });
 
     // Load channel data
     loadRadioData();
@@ -354,23 +386,20 @@ async function saveSettings() {
 
         // If currently streaming, the user will need to re-tune for the gain change to take effect
         const playerState = getState();
-        if (playerState && playerState.playing) {
-            const proceed = confirm(
-                'Gain setting saved. A re-tune is needed for the change to take effect. Re-tune now?'
-            );
-            if (proceed) {
-                const deviceIndex = setupData.selected_device ? setupData.selected_device.index : 0;
-                const channel = setupData.selected_transponder
-                    ? setupData.selected_transponder.channel
-                    : null;
-                if (channel) {
-                    await api.tune(deviceIndex, channel);
-                }
-            }
+        if (playerState && playerState.state === 'playing') {
+            showRetuneModal();
         }
     } catch (err) {
         alert(`Failed to save settings: ${err.message}`);
     }
+}
+
+function showRetuneModal() {
+    document.getElementById('retune-modal').style.display = 'flex';
+}
+
+function closeRetuneModal() {
+    document.getElementById('retune-modal').style.display = 'none';
 }
 
 // ─── Fatal Error ────────────────────────────────────────
@@ -389,36 +418,3 @@ function showFatalError(message) {
     `;
 }
 
-/**
- * Safely extract a label string from a welle-cli label field.
- */
-function extractLabel(val) {
-    if (!val) return null;
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object' && typeof val.label === 'string') return val.label;
-    if (typeof val === 'object' && val.label) return extractLabel(val.label);
-    return null;
-}
-
-/**
- * Safely extract the ensemble label from a transponder object.
- */
-function getEnsembleLabel(tp) {
-    if (!tp) return 'Unknown';
-    const e = tp.ensemble;
-    if (!e) return tp.channel || 'Unknown';
-    if (typeof e === 'string') return e;
-    if (typeof e === 'object') {
-        const label = extractLabel(e.label);
-        if (label) return label;
-    }
-    return tp.channel || 'Unknown';
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    if (typeof str !== 'string') str = String(str);
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}

@@ -9,6 +9,7 @@ let currentSid = null;
 let currentStationName = null;
 let currentVolume = 0.6;
 let currentDlsText = '';
+let sliderActive = false; // true while user is dragging the volume slider
 
 // SVG icons
 const ICON_PLAY = `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
@@ -176,6 +177,7 @@ export function getState() {
  */
 function render() {
     if (!containerEl) return;
+    if (sliderActive) return; // Don't destroy slider mid-drag
 
     const isPlaying = state === 'playing';
     const isLoading = state === 'loading';
@@ -215,6 +217,13 @@ function render() {
     volumeSlider.addEventListener('input', (e) => {
         setVolume(parseInt(e.target.value, 10) / 100, true);
     });
+    volumeSlider.addEventListener('mousedown', () => { sliderActive = true; });
+    volumeSlider.addEventListener('touchstart', () => { sliderActive = true; });
+    const releaseSlider = () => { sliderActive = false; };
+    volumeSlider.addEventListener('mouseup', releaseSlider);
+    volumeSlider.addEventListener('touchend', releaseSlider);
+    // Also release if mouse leaves the slider area entirely
+    window.addEventListener('mouseup', releaseSlider, { once: false });
 
     // Mute toggle — full render needed to update slider position
     const volumeIcon = containerEl.querySelector('.player-volume-icon');

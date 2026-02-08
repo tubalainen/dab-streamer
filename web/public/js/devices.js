@@ -2,6 +2,8 @@
  * DAB+ Radio Streamer — Device Rendering Helpers
  */
 
+import { escapeHtml } from './utils.js';
+
 /**
  * Render a list of selectable device cards.
  * @param {Array} devices - Array of device objects
@@ -70,12 +72,3 @@ export function renderDeviceInfo(device) {
     return el;
 }
 
-/**
- * Escape HTML entities for safe insertion.
- */
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}

@@ -66,6 +66,9 @@ router.get('/current', async (req, res) => {
  */
 router.get('/stream/:sid', (req, res) => {
   const sid = req.params.sid;
+  if (!/^(0x[0-9a-fA-F]{1,8}|[0-9]+)$/.test(sid)) {
+    return res.status(400).json({ error: 'Invalid service ID format' });
+  }
   const streamUrl = dabBackend.getStreamUrl(sid);
 
   console.log(`[tuner] Proxying stream for SID ${sid} from ${streamUrl}`);
@@ -264,6 +267,9 @@ function extractLabel(val) {
  */
 router.get('/slide/:sid', (req, res) => {
   const sid = req.params.sid;
+  if (!/^(0x[0-9a-fA-F]{1,8}|[0-9]+)$/.test(sid)) {
+    return res.status(400).json({ error: 'Invalid service ID format' });
+  }
   const cacheFile = path.join(config.LOGOS_DIR, `${sid}.img`);
   const slideUrl = `${config.DAB_SERVER_URL}/slide/${sid}`;
 
@@ -381,6 +387,9 @@ function saveLogo(sid, cacheFile, imageData, contentType) {
  */
 router.get('/dls/:sid', async (req, res) => {
   const sid = req.params.sid;
+  if (!/^(0x[0-9a-fA-F]{1,8}|[0-9]+)$/.test(sid)) {
+    return res.status(400).json({ error: 'Invalid service ID format' });
+  }
   try {
     const mux = await dabBackend.getCurrentEnsemble();
     if (!mux || !mux.services) {

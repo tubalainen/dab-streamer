@@ -8,6 +8,7 @@
  */
 
 import * as api from './api.js';
+import { escapeHtml, extractLabel, getEnsembleLabel, filterAudioServices } from './utils.js';
 import { renderDeviceCards } from './devices.js';
 import { renderScanProgress, renderScanComplete } from './scanner.js';
 
@@ -619,9 +620,10 @@ function renderNavigation() {
     const saveBtn = navEl.querySelector('#btn-save');
 
     if (backBtn) {
-        backBtn.addEventListener('click', () => {
+        backBtn.addEventListener('click', async () => {
             if (currentStep === 2) {
-                cancelScanning().then(() => goToStep(1));
+                await cancelScanning();
+                goToStep(1);
             } else if (currentStep === 3 && usedManualMode) {
                 // In manual mode, go back to step 1 (skip step 2)
                 goToStep(1);
@@ -659,50 +661,6 @@ function showError(message) {
 }
 
 /**
- * Filter services to only include audio services.
- * welle-cli uses lowercase: "audio", "streamdata", "packetdata", "fidc".
- * If transportmode is missing (old scan data), assume audio.
- */
-function filterAudioServices(services) {
-    if (!services) return [];
-    return services.filter(svc => {
-        if (svc.transportmode && svc.transportmode !== 'audio') return false;
-        return true;
-    });
-}
-
-/**
- * Safely extract a label string from a welle-cli label field.
- * welle-cli can return labels as:
- *   - a plain string: "Name"
- *   - a nested object: { label: "Name", shortlabel: "N", ... }
- */
-function extractLabel(val) {
-    if (!val) return null;
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object' && typeof val.label === 'string') return val.label;
-    if (typeof val === 'object' && val.label) return extractLabel(val.label);
-    return null;
-}
-
-/**
- * Safely extract the ensemble label from a transponder object.
- * Handles all forms: ensemble as string, object with label string,
- * or object with nested label object (raw welle-cli format).
- */
-function getEnsembleLabel(tp) {
-    if (!tp) return 'Unknown';
-    const e = tp.ensemble;
-    if (!e) return tp.channel || 'Unknown';
-    if (typeof e === 'string') return e;
-    if (typeof e === 'object') {
-        const label = extractLabel(e.label);
-        if (label) return label;
-    }
-    return tp.channel || 'Unknown';
-}
-
-/**
  * Safely extract the ensemble ID from a transponder object.
  */
 function getEnsembleId(tp) {
@@ -713,10 +671,3 @@ function getEnsembleId(tp) {
     return tp.ensemble_id || null;
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    if (typeof str !== 'string') str = String(str);
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}

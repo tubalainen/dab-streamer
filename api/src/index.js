@@ -21,12 +21,32 @@ const app = express();
 // Middleware
 // ---------------------------------------------------------------------------
 
-// JSON body parser
-app.use(express.json());
+// JSON body parser (limit request size to prevent DoS)
+app.use(express.json({ limit: '1mb' }));
 
-// CORS headers (allow all origins for local development)
+// CORS headers — restrict to same-host or configured origin
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = process.env.CORS_ORIGIN || null;
+  const origin = req.headers.origin;
+
+  if (allowedOrigin && origin === allowedOrigin) {
+    // Explicit allowed origin configured
+    res.header('Access-Control-Allow-Origin', origin);
+  } else if (!allowedOrigin && origin) {
+    // No explicit origin configured — allow same-host origins only
+    const host = req.headers.host;
+    if (host && origin) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost === host) {
+          res.header('Access-Control-Allow-Origin', origin);
+        }
+      } catch {
+        // Invalid origin header, skip CORS
+      }
+    }
+  }
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 
@@ -82,6 +102,8 @@ app.get('/', (req, res) => {
       'POST /api/tune',
       'GET  /api/current',
       'GET  /api/stream/:sid',
+      'GET  /api/dls/:sid',
+      'GET  /api/slide/:sid',
       'POST /api/scan/:deviceIndex',
       'GET  /api/scan/:deviceIndex/progress',
       'POST /api/scan/:deviceIndex/cancel',
@@ -105,7 +127,6 @@ app.use((err, req, res, _next) => {
   console.error('[error]', err.stack || err.message);
   res.status(err.status || 500).json({
     error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack }),
   });
 });
 

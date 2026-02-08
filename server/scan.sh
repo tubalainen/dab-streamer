@@ -143,7 +143,7 @@ for CHANNEL in "${CHANNELS[@]}"; do
     fi
 
     # Switch to this channel
-    curl -sf -X POST -d "$CHANNEL" "http://localhost:$SCAN_PORT/channel" >/dev/null 2>&1 || true
+    curl -sf --connect-timeout 5 --max-time 10 -X POST -d "$CHANNEL" "http://localhost:$SCAN_PORT/channel" >/dev/null 2>&1 || true
 
     # Update progress
     jq -nc \
@@ -169,7 +169,7 @@ for CHANNEL in "${CHANNELS[@]}"; do
             break 2
         fi
 
-        MUX=$(curl -sf "http://localhost:$SCAN_PORT/mux.json" 2>/dev/null || echo "{}")
+        MUX=$(curl -sf --connect-timeout 5 --max-time 10 "http://localhost:$SCAN_PORT/mux.json" 2>/dev/null || echo "{}")
         SERVICE_COUNT=$(echo "$MUX" | jq '.services | length' 2>/dev/null || echo "0")
 
         if [ "$SERVICE_COUNT" -gt 0 ]; then

@@ -2,6 +2,7 @@
  * DAB+ Radio Streamer — Channel / Station List UI
  */
 
+import { escapeHtml, escapeAttr, getEnsembleLabel, filterAudioServices } from './utils.js';
 import { getCachedLogo, fetchAndCacheLogo } from './logo-cache.js';
 
 // Simplified radio icon for station thumbnails
@@ -179,67 +180,28 @@ function render() {
         });
     });
 
-    // Background-fetch logos for stations without cached thumbnails
-    containerEl.querySelectorAll('.station-item-thumb[data-thumb-sid]').forEach((el) => {
-        const sid = el.dataset.thumbSid;
-        if (!getCachedLogo(sid)) {
-            fetchAndCacheLogo(sid).then(blobUrl => {
+    // Background-fetch logos for stations without cached thumbnails (throttled)
+    const uncachedThumbs = Array.from(
+        containerEl.querySelectorAll('.station-item-thumb[data-thumb-sid]')
+    ).filter(el => !getCachedLogo(el.dataset.thumbSid));
+
+    const BATCH_SIZE = 3;
+    let batchIndex = 0;
+    function fetchNextBatch() {
+        const batch = uncachedThumbs.slice(batchIndex, batchIndex + BATCH_SIZE);
+        if (batch.length === 0) return;
+        batchIndex += BATCH_SIZE;
+        Promise.all(batch.map(el => {
+            const sid = el.dataset.thumbSid;
+            return fetchAndCacheLogo(sid).then(blobUrl => {
                 if (blobUrl && el.isConnected) {
                     el.innerHTML = `<img src="${blobUrl}" alt="" class="station-item-thumb-img">`;
                 }
-            });
-        }
-    });
-}
-
-/**
- * Filter services to only include audio services.
- * welle-cli uses lowercase: "audio", "streamdata", "packetdata", "fidc".
- * If transportmode is missing (old scan data), assume audio.
- */
-function filterAudioServices(services) {
-    if (!services) return [];
-    return services.filter(svc => {
-        if (svc.transportmode && svc.transportmode !== 'audio') return false;
-        return true;
-    });
-}
-
-/**
- * Safely extract a label string from a welle-cli label field.
- */
-function extractLabel(val) {
-    if (!val) return null;
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object' && typeof val.label === 'string') return val.label;
-    if (typeof val === 'object' && val.label) return extractLabel(val.label);
-    return null;
-}
-
-/**
- * Safely extract the ensemble label from a transponder object.
- */
-function getEnsembleLabel(tp) {
-    if (!tp) return 'Unknown';
-    const e = tp.ensemble;
-    if (!e) return tp.channel || 'Unknown';
-    if (typeof e === 'string') return e;
-    if (typeof e === 'object') {
-        const label = extractLabel(e.label);
-        if (label) return label;
+            }).catch(() => { /* logo fetch failed, will retry later */ });
+        })).then(() => {
+            setTimeout(fetchNextBatch, 200);
+        });
     }
-    return tp.channel || 'Unknown';
+    fetchNextBatch();
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    if (typeof str !== 'string') str = String(str);
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function escapeAttr(str) {
-    if (!str) return '';
-    return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
