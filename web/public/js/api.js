@@ -60,8 +60,8 @@ export async function completeSetup(deviceIndex, deviceSerial, transponder) {
     });
 }
 
-export async function resetSetup() {
-    return request('POST', '/setup/reset');
+export async function resetSetup(password) {
+    return request('POST', '/setup/reset', password ? { password } : null);
 }
 
 // ─── Devices ────────────────────────────────────────────
@@ -118,16 +118,6 @@ export async function getCurrentInfo() {
 
 export async function getDLS(sid) {
     return request('GET', `/dls/${sid}`);
-}
-
-// ─── Settings ──────────────────────────────────────────
-
-export async function getSettings() {
-    return request('GET', '/settings');
-}
-
-export async function updateSettings(settings) {
-    return request('POST', '/settings', settings);
 }
 
 // ─── Health ─────────────────────────────────────────────

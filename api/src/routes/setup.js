@@ -74,6 +74,14 @@ router.post('/complete', async (req, res) => {
  * Reset setup: stop streaming, release locks, clear setup.json.
  */
 router.post('/reset', async (req, res) => {
+  // Require admin password if configured
+  if (config.ADMIN_PASSWORD) {
+    const { password } = req.body || {};
+    if (password !== config.ADMIN_PASSWORD) {
+      return res.status(401).json({ error: 'Invalid admin password' });
+    }
+  }
+
   try {
     // Stop any active streaming
     try {

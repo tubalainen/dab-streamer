@@ -9,7 +9,7 @@
 import * as api from './api.js';
 import { escapeHtml, getEnsembleLabel } from './utils.js';
 import { initWizard } from './wizard.js';
-import { initPlayer, play, stop, getState, setStationName, setDls } from './player.js';
+import { initPlayer, play, stop, setStationName, setDls } from './player.js';
 import { initChannelList, loadChannels, setActiveStation } from './channels.js';
 import { initNowPlaying, update as updateNowPlaying, clear as clearNowPlaying, onDlsChange } from './nowplaying.js';
 
@@ -59,9 +59,6 @@ function initRadioMode() {
                     <h1>DAB+ <span>Radio Streamer</span></h1>
                 </div>
                 <div class="radio-header-actions">
-                    <button class="btn btn-sm btn-secondary" id="btn-settings" title="Settings">
-                        &#9881;
-                    </button>
                     <button class="btn btn-sm btn-secondary" id="btn-setup">
                         Reset Configuration
                     </button>
@@ -77,78 +74,19 @@ function initRadioMode() {
 
             <div class="player-controls" id="player-container"></div>
 
-            <div class="settings-panel" id="settings-panel" style="display:none;">
-                <div class="settings-overlay" id="settings-overlay"></div>
-                <div class="settings-content">
-                    <h3>RTL-SDR Settings</h3>
-                    <div class="form-group">
-                        <label for="gain-select">Gain</label>
-                        <select id="gain-select" class="form-control">
-                            <option value="-1">AGC (Automatic)</option>
-                            <option value="0">0 dB</option>
-                            <option value="1">0.9 dB</option>
-                            <option value="2">1.4 dB</option>
-                            <option value="3">2.7 dB</option>
-                            <option value="4">3.7 dB</option>
-                            <option value="5">7.7 dB</option>
-                            <option value="6">8.7 dB</option>
-                            <option value="7">12.5 dB</option>
-                            <option value="8">14.4 dB</option>
-                            <option value="9">15.7 dB</option>
-                            <option value="10">16.6 dB</option>
-                            <option value="11">19.7 dB</option>
-                            <option value="12">20.7 dB</option>
-                            <option value="13">22.9 dB</option>
-                            <option value="14">25.4 dB</option>
-                            <option value="15">28.0 dB</option>
-                            <option value="16">29.7 dB</option>
-                            <option value="17">32.8 dB</option>
-                            <option value="18">33.8 dB</option>
-                            <option value="19">36.4 dB</option>
-                            <option value="20">37.2 dB</option>
-                            <option value="21">38.6 dB</option>
-                            <option value="22">40.2 dB</option>
-                            <option value="23">42.1 dB</option>
-                            <option value="24">43.4 dB</option>
-                            <option value="25">43.9 dB</option>
-                            <option value="26">44.5 dB</option>
-                            <option value="27">48.0 dB</option>
-                            <option value="28">49.6 dB</option>
-                        </select>
-                        <small class="form-text">
-                            AGC lets the dongle automatically adjust gain.
-                            Manual gain values may improve reception in strong/weak signal areas.
-                        </small>
-                    </div>
-                    <div class="settings-actions">
-                        <button class="btn btn-primary btn-sm" id="btn-save-settings">Save</button>
-                        <button class="btn btn-secondary btn-sm" id="btn-close-settings">Close</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="confirm-modal" id="reset-modal" style="display:none;">
                 <div class="confirm-overlay" id="reset-overlay"></div>
                 <div class="confirm-content">
                     <h3>Reset Configuration</h3>
-                    <p>This will stop playback, release all device locks, and return to the setup wizard. Your scan data will be preserved.</p>
-                    <p class="text-muted" style="font-size: 13px;">Are you sure you want to continue?</p>
+                    <p>This will stop playback, release all device locks, and return to the setup wizard.</p>
+                    <div class="form-group">
+                        <label for="reset-password">Admin Password</label>
+                        <input type="password" id="reset-password" class="form-control" placeholder="Enter admin password">
+                        <div id="reset-password-error" style="display:none; color: var(--accent-red); font-size: 13px; margin-top: 4px;"></div>
+                    </div>
                     <div class="confirm-actions">
                         <button class="btn btn-secondary btn-sm" id="btn-reset-cancel">Cancel</button>
                         <button class="btn btn-danger btn-sm" id="btn-reset-confirm">Reset</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="confirm-modal" id="retune-modal" style="display:none;">
-                <div class="confirm-overlay" id="retune-overlay"></div>
-                <div class="confirm-content">
-                    <h3>Re-tune Required</h3>
-                    <p>Gain setting saved. A re-tune is needed for the change to take effect.</p>
-                    <p class="text-muted" style="font-size: 13px;">Re-tune now?</p>
-                    <div class="confirm-actions">
-                        <button class="btn btn-secondary btn-sm" id="btn-retune-cancel">Later</button>
-                        <button class="btn btn-primary btn-sm" id="btn-retune-confirm">Re-tune Now</button>
                     </div>
                 </div>
             </div>
@@ -180,53 +118,38 @@ function initRadioMode() {
     // Wire DLS updates from now-playing to player bar
     onDlsChange((dlsText) => setDls(dlsText));
 
-    // Reset Configuration button — show confirmation modal
+    // Reset Configuration button — show modal with password prompt
     document.getElementById('btn-setup').addEventListener('click', () => {
+        document.getElementById('reset-password').value = '';
+        document.getElementById('reset-password-error').style.display = 'none';
         document.getElementById('reset-modal').style.display = 'flex';
+        document.getElementById('reset-password').focus();
     });
 
-    document.getElementById('reset-overlay').addEventListener('click', () => {
-        document.getElementById('reset-modal').style.display = 'none';
-    });
-
-    document.getElementById('btn-reset-cancel').addEventListener('click', () => {
-        document.getElementById('reset-modal').style.display = 'none';
-    });
+    document.getElementById('reset-overlay').addEventListener('click', closeResetModal);
+    document.getElementById('btn-reset-cancel').addEventListener('click', closeResetModal);
 
     document.getElementById('btn-reset-confirm').addEventListener('click', async () => {
         const confirmBtn = document.getElementById('btn-reset-confirm');
+        const password = document.getElementById('reset-password').value;
+        const errorEl = document.getElementById('reset-password-error');
+        errorEl.style.display = 'none';
+
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<span class="spinner spinner-sm spinner-inline"></span> Resetting...';
         stop();
         try {
-            await api.resetSetup();
+            await api.resetSetup(password);
             window.location.reload();
         } catch (err) {
-            document.getElementById('reset-modal').style.display = 'none';
-            alert(`Failed to reset setup: ${err.message}`);
-        }
-    });
-
-    // Settings panel
-    document.getElementById('btn-settings').addEventListener('click', openSettings);
-    document.getElementById('settings-overlay').addEventListener('click', closeSettings);
-    document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
-    document.getElementById('btn-save-settings').addEventListener('click', saveSettings);
-
-    // Re-tune modal
-    document.getElementById('retune-overlay').addEventListener('click', closeRetuneModal);
-    document.getElementById('btn-retune-cancel').addEventListener('click', closeRetuneModal);
-    document.getElementById('btn-retune-confirm').addEventListener('click', async () => {
-        closeRetuneModal();
-        const deviceIndex = setupData.selected_device ? setupData.selected_device.index : 0;
-        const channel = setupData.selected_transponder
-            ? setupData.selected_transponder.channel
-            : null;
-        if (channel) {
-            try {
-                await api.tune(deviceIndex, channel);
-            } catch (err) {
-                console.error('Re-tune failed:', err);
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Reset';
+            if (err.status === 401) {
+                errorEl.textContent = 'Incorrect password';
+                errorEl.style.display = 'block';
+            } else {
+                errorEl.textContent = `Failed to reset: ${err.message}`;
+                errorEl.style.display = 'block';
             }
         }
     });
@@ -356,50 +279,12 @@ function updateStatusIndicator(connected) {
     }
 }
 
-// ─── Settings Panel ─────────────────────────────────────
+// ─── Reset Modal ───────────────────────────────────────
 
-async function openSettings() {
-    const panel = document.getElementById('settings-panel');
-    panel.style.display = 'flex';
-
-    // Load current settings from server
-    try {
-        const settings = await api.getSettings();
-        if (settings && settings.gain !== undefined) {
-            document.getElementById('gain-select').value = String(settings.gain);
-        }
-    } catch (err) {
-        console.error('Failed to load settings:', err);
-    }
-}
-
-function closeSettings() {
-    document.getElementById('settings-panel').style.display = 'none';
-}
-
-async function saveSettings() {
-    const gain = parseInt(document.getElementById('gain-select').value, 10);
-
-    try {
-        await api.updateSettings({ gain });
-        closeSettings();
-
-        // If currently streaming, the user will need to re-tune for the gain change to take effect
-        const playerState = getState();
-        if (playerState && playerState.state === 'playing') {
-            showRetuneModal();
-        }
-    } catch (err) {
-        alert(`Failed to save settings: ${err.message}`);
-    }
-}
-
-function showRetuneModal() {
-    document.getElementById('retune-modal').style.display = 'flex';
-}
-
-function closeRetuneModal() {
-    document.getElementById('retune-modal').style.display = 'none';
+function closeResetModal() {
+    document.getElementById('reset-password').value = '';
+    document.getElementById('reset-password-error').style.display = 'none';
+    document.getElementById('reset-modal').style.display = 'none';
 }
 
 // ─── Fatal Error ────────────────────────────────────────

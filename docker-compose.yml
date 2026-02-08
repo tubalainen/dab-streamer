@@ -49,6 +49,7 @@ services:
       - DEFAULT_CHANNEL=${DEFAULT_CHANNEL:-5A}
       - LOCK_REAPER_INTERVAL=${LOCK_REAPER_INTERVAL:-30}
       - KEEP_SCAN_DATA_ON_RESET=${KEEP_SCAN_DATA_ON_RESET:-true}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     networks:
       - dab-net
     restart: unless-stopped
