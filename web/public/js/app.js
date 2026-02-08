@@ -100,7 +100,7 @@ function initRadioMode() {
                 </div>
                 <div class="status-bar-right">
                     <div class="status-bar-item" id="status-device"></div>
-                    <div class="status-bar-item">DAB+ Radio Streamer</div>
+                    <div class="status-bar-item"><a href="https://github.com/tubalainen/dab-streamer" target="_blank" rel="noopener noreferrer">DAB+ Radio Streamer</a></div>
                 </div>
             </footer>
         </div>
