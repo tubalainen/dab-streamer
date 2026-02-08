@@ -11,6 +11,7 @@ const config = {
   DEFAULT_CHANNEL: process.env.DEFAULT_CHANNEL || '5A',
   LOCK_REAPER_INTERVAL: parseInt(process.env.LOCK_REAPER_INTERVAL, 10) || 30,
   KEEP_SCAN_DATA_ON_RESET: (process.env.KEEP_SCAN_DATA_ON_RESET || 'true').toLowerCase() === 'true',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
   DATA_DIR: process.env.DATA_DIR || '/data',
 };
 

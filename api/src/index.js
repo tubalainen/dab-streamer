@@ -107,8 +107,6 @@ app.get('/', (req, res) => {
       'POST /api/scan/:deviceIndex',
       'GET  /api/scan/:deviceIndex/progress',
       'POST /api/scan/:deviceIndex/cancel',
-      'GET  /api/settings',
-      'POST /api/settings',
     ],
   });
 });

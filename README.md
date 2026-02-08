@@ -14,7 +14,6 @@ A Dockerized web application for receiving and streaming DAB+ digital radio usin
 - **Station logos** — displays station logos from welle-cli MOT/slideshow data when available, with a fallback radio icon
 - **Channel scanning** — automatic scan of all 38 DAB Band III channels (5A through 13F) with live progress
 - **Service filtering** — automatically filters out non-audio services (SPI, EPG, TPEG, etc.) showing only radio stations
-- **RTL-SDR gain control** — configure automatic (AGC) or manual gain via the settings panel
 - **Dark theme UI** — clean, modern interface with bottom-docked player controls
 - **Reset configuration** — return to the setup wizard with a confirmation modal; scan data is preserved
 
@@ -127,6 +126,7 @@ Available configuration options:
 | `SCAN_TIMEOUT` | `10` | Seconds to wait per channel during scan |
 | `LOCK_REAPER_INTERVAL` | `30` | Seconds between stale lock cleanup |
 | `KEEP_SCAN_DATA_ON_RESET` | `true` | Preserve scan data when restarting setup wizard |
+| `ADMIN_PASSWORD` | _(empty)_ | Admin password required to reset configuration. When empty, no password is required |
 | `CORS_ORIGIN` | _(unset)_ | Explicit allowed CORS origin (e.g. `http://myhost:8080`). When unset, only same-host origins are allowed |
 
 ### 3. Build and start
@@ -174,12 +174,11 @@ After setup, the main radio interface provides:
 - **Station list** (sidebar) — all audio services on the selected transponder, click to start listening
 - **Now Playing** (main area) — station logo (when available), station name, ensemble, channel, bitrate, codec, and device info
 - **Audio player** (bottom bar) — play/stop control and volume slider, with pre-buffering for smoother playback
-- **Settings** — gear icon to configure RTL-SDR gain (AGC or manual dB values)
 - **Status bar** — connection status, active device, and application info
 
 ### Resetting Configuration
 
-Click the **Reset Configuration** button in the header. A confirmation modal will appear explaining that playback will stop and the wizard will restart. Previous scan data is preserved by default.
+Click the **Reset Configuration** button in the header. A modal will prompt for the admin password (if `ADMIN_PASSWORD` is configured). Playback will stop, device locks will be released, and the setup wizard will restart. Previous scan data is preserved by default.
 
 ## Multi-Device Support
 
@@ -321,13 +320,6 @@ dab-streamer/
 | `GET` | `/api/dls/:sid` | Dynamic Label Segment text and MOT change timestamps |
 | `GET` | `/api/slide/:sid` | Station logo proxy (MOT/slideshow image) |
 
-### Settings
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/settings` | Current RTL-SDR settings (gain) |
-| `POST` | `/api/settings` | Update RTL-SDR settings (gain: -1 for AGC, 0-49 for manual dB) |
-
 ### Health
 
 | Method | Path | Description |
@@ -438,6 +430,7 @@ The following hardening measures are applied:
 - **HTTP timeouts** — upstream requests to the dab-server time out after 10 seconds; curl calls in scan scripts have connect and max-time limits
 - **Security headers** — nginx adds `X-Content-Type-Options`, `X-Frame-Options`, and `Referrer-Policy` headers
 - **Resource limits** — Docker memory limits and log rotation prevent runaway resource consumption
+- **Admin password** — optional `ADMIN_PASSWORD` env var protects the Reset Configuration action; when set, the API returns 401 on incorrect password
 - **`.dockerignore` files** — prevent `node_modules`, `.git`, and other unnecessary files from entering container images
 
 ## License
