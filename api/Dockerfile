@@ -5,6 +5,7 @@ COPY package.json ./
 RUN npm install --production
 COPY src/ ./src/
 ENV NODE_ENV=production
+RUN mkdir -p /data/locks /data/logos && chown -R node:node /data
 USER node
 EXPOSE 3000
 CMD ["node", "src/index.js"]
