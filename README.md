@@ -2,7 +2,7 @@
 
 A Dockerized web application for receiving and streaming DAB+ digital radio using RTL-SDR dongles. Browse and listen to DAB+ radio stations directly in your web browser.
 
-<img width="1287" height="961" alt="image" src="https://github.com/user-attachments/assets/0ed45eb1-91c1-4d86-8ec4-1db0b94d34ed" />
+<img width="1074" height="982" alt="image" src="https://github.com/user-attachments/assets/a55a7244-6774-49d2-99ea-eac9b02cf162" />
 
 ## Features
 
