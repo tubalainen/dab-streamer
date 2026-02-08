@@ -2,7 +2,7 @@
  * DAB+ Radio Streamer — Now Playing Panel
  */
 
-import { getCachedLogo, fetchAndCacheLogo, retryLogo } from './logo-cache.js';
+import { getCachedLogo, fetchAndCacheLogo, retryLogo, refreshLogo } from './logo-cache.js';
 import { getDLS } from './api.js';
 
 let containerEl = null;
@@ -12,6 +12,7 @@ let currentInfo = null;
 let dlsInterval = null;
 let currentDlsText = '';
 let lastDlsChange = 0;
+let lastMotChange = 0;
 let dlsCallback = null; // callback to notify app.js of DLS changes
 
 // SVG fallback icon for when no station logo is available
@@ -53,9 +54,10 @@ export function update(info) {
     render();
 
     if (sidChanged) {
-        // Reset DLS state and restart polling for new station
+        // Reset DLS and MOT state and restart polling for new station
         currentDlsText = '';
         lastDlsChange = 0;
+        lastMotChange = 0;
         startDlsPolling(info.sid);
     }
 }
@@ -67,6 +69,7 @@ export function clear() {
     currentInfo = null;
     currentDlsText = '';
     lastDlsChange = 0;
+    lastMotChange = 0;
     stopDlsPolling();
     if (dlsCallback) dlsCallback('');
     render();
@@ -164,6 +167,24 @@ function showLogoImage(logoEl, src) {
     logoEl.appendChild(img);
 }
 
+/**
+ * Update the now-playing logo and sidebar thumbnail with a new blob URL.
+ */
+function updateLogoEverywhere(sid, blobUrl) {
+    if (!currentInfo || String(currentInfo.sid) !== String(sid)) return;
+
+    // Update now-playing logo
+    const logoEl = document.getElementById('now-playing-logo');
+    if (logoEl) {
+        showLogoImage(logoEl, blobUrl);
+    }
+    // Update sidebar thumbnail in-place
+    const thumbEl = document.querySelector(`.station-item-thumb[data-thumb-sid="${sid}"]`);
+    if (thumbEl) {
+        thumbEl.innerHTML = `<img src="${blobUrl}" alt="" class="station-item-thumb-img">`;
+    }
+}
+
 // ─── DLS Polling ────────────────────────────────────────
 
 function startDlsPolling(sid) {
@@ -198,24 +219,38 @@ async function pollDls(sid) {
             updateDlsDisplay(currentDlsText);
             if (dlsCallback) dlsCallback(currentDlsText);
         }
+
+        // Detect MOT (slideshow/logo) changes — refresh logo when station sends new image
+        if (data.motLastChange && data.motLastChange !== lastMotChange) {
+            const hadPreviousMot = lastMotChange !== 0;
+            lastMotChange = data.motLastChange;
+
+            if (hadPreviousMot) {
+                // MOT changed while we're listening — invalidate cache and re-fetch
+                const blobUrl = await refreshLogo(sid);
+                if (blobUrl) {
+                    updateLogoEverywhere(sid, blobUrl);
+                }
+            } else {
+                // First MOT data received — fetch if not already cached
+                if (!getCachedLogo(sid)) {
+                    const blobUrl = await retryLogo(sid);
+                    if (blobUrl) {
+                        updateLogoEverywhere(sid, blobUrl);
+                    }
+                }
+            }
+            return; // Logo was handled via MOT detection, skip retry below
+        }
     } catch {
         // DLS fetch failed — ignore silently, will retry on next poll
     }
 
-    // Retry logo if not yet cached for the active station
+    // Retry logo if not yet cached for the active station (no MOT data yet)
     if (!getCachedLogo(sid)) {
         const blobUrl = await retryLogo(sid);
-        if (blobUrl && currentInfo && String(currentInfo.sid) === String(sid)) {
-            // Update now-playing logo
-            const logoEl = document.getElementById('now-playing-logo');
-            if (logoEl) {
-                showLogoImage(logoEl, blobUrl);
-            }
-            // Update sidebar thumbnail in-place
-            const thumbEl = document.querySelector(`.station-item-thumb[data-thumb-sid="${sid}"]`);
-            if (thumbEl) {
-                thumbEl.innerHTML = `<img src="${blobUrl}" alt="" class="station-item-thumb-img">`;
-            }
+        if (blobUrl) {
+            updateLogoEverywhere(sid, blobUrl);
         }
     }
 }

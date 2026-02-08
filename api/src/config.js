@@ -19,6 +19,7 @@ config.SETUP_FILE = path.join(config.DATA_DIR, 'setup.json');
 config.DEVICES_FILE = path.join(config.DATA_DIR, 'devices.json');
 config.CHANNELS_FILE = path.join(config.DATA_DIR, 'channels.json');
 config.LOCKS_DIR = path.join(config.DATA_DIR, 'locks');
+config.LOGOS_DIR = path.join(config.DATA_DIR, 'logos');
 
 // dab-server management API base URL
 config.DAB_SERVER_URL = `http://${config.DAB_SERVER_HOST}:${config.DAB_SERVER_MGMT_PORT}`;
