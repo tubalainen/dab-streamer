@@ -95,6 +95,18 @@ sudo apt install rtl-sdr
 rtl_test -t
 ```
 
+## Container Images
+
+Pre-built container images are published to the GitHub Container Registry (ghcr.io) on every release:
+
+| Image | Description |
+|-------|-------------|
+| `ghcr.io/tubalainen/dab-streamer/dab-server` | DAB+ receiver — welle-cli + Python management API |
+| `ghcr.io/tubalainen/dab-streamer/api` | REST API gateway — Node.js / Express |
+| `ghcr.io/tubalainen/dab-streamer/web-ui` | Web frontend — nginx |
+
+Each image is tagged with the release version (e.g. `1.0.0`, `1.0`, `1`) and `latest`.
+
 ## Installation
 
 ### 1. Clone the repository
@@ -129,7 +141,17 @@ Available configuration options:
 | `ADMIN_PASSWORD` | _(empty)_ | Admin password required to reset configuration. When empty, no password is required |
 | `CORS_ORIGIN` | _(unset)_ | Explicit allowed CORS origin (e.g. `http://myhost:8080`). When unset, only same-host origins are allowed |
 
-### 3. Build and start
+### 3. Start the application
+
+**Using pre-built images (recommended):**
+
+```bash
+docker compose up -d
+```
+
+This pulls the pre-built images from ghcr.io and starts all services.
+
+**Building from source:**
 
 ```bash
 docker compose up -d --build
