@@ -1,9 +1,10 @@
 services:
   dab-server:
     image: ghcr.io/tubalainen/dab-streamer/dab-server:latest
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    # Uncomment if you want to build from scratch instead of fetching the container image
+    # build:
+      # context: ./server
+      # dockerfile: Dockerfile
     container_name: dab-server
     devices:
       - /dev/bus/usb:/dev/bus/usb
@@ -33,9 +34,10 @@ services:
 
   api:
     image: ghcr.io/tubalainen/dab-streamer/api:latest
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    # Uncomment if you want to build from scratch instead of fetching the container image
+    # build:
+      # context: ./api
+      # dockerfile: Dockerfile
     container_name: dab-api
     depends_on:
       dab-server:
@@ -70,9 +72,10 @@ services:
 
   web-ui:
     image: ghcr.io/tubalainen/dab-streamer/web-ui:latest
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+    # Uncomment if you want to build from scratch instead of fetching the container image
+    # build:
+      # context: ./web
+      # dockerfile: Dockerfile
     container_name: dab-web
     depends_on:
       api:
