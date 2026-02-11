@@ -1,6 +1,13 @@
 name: Publish to GHCR
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'api/**'
+      - 'web/**'
+      - '.github/workflows/publish-ghcr.yml'
   release:
     types: [published]
 
@@ -52,6 +59,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+            type=sha,prefix=sha-,format=short
             type=raw,value=latest
 
       - name: Build and push image
