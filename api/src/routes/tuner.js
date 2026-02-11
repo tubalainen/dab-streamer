@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
     // Start streaming on the requested device and channel (with optional gain)
     const result = await dabBackend.startStreaming(idx, channel, gain);
 
-    console.log(`[tuner] Tuned device ${idx} to channel ${channel}, gain=${gain !== undefined ? gain : 'default'}`);
+    console.log(`[tuner] Tuned device ${idx} to channel ${channel}, gain=${result.gain !== undefined ? result.gain : (gain !== undefined ? gain : 'server-default')}`);
     res.json({
       success: true,
       device_index: idx,
@@ -159,7 +159,8 @@ router.post('/tune-discover', async (req, res) => {
     console.log(`[tuner] Tune-discover: device ${idx}, channel ${channel}`);
 
     // Start streaming on the channel
-    await dabBackend.startStreaming(idx, channel);
+    const tuneResult = await dabBackend.startStreaming(idx, channel);
+    console.log(`[tuner] Tune-discover started: gain=${tuneResult.gain !== undefined ? tuneResult.gain : 'server-default'}`);
 
     // Poll mux.json for services (wait up to 15 seconds).
     // welle-cli discovers services progressively — service entries appear first,

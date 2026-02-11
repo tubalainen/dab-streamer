@@ -152,8 +152,8 @@ async function autoTuneOnStartup() {
     // Small delay to let dab-server come up first
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
-    await dabBackend.startStreaming(deviceIndex, channel);
-    console.log(`[startup] Auto-tune successful: device ${deviceIndex}, channel ${channel}`);
+    const result = await dabBackend.startStreaming(deviceIndex, channel);
+    console.log(`[startup] Auto-tune successful: device ${deviceIndex}, channel ${channel}, gain=${result.gain !== undefined ? result.gain : 'server-default'}`);
   } catch (err) {
     console.error('[startup] Auto-tune failed (will retry when user interacts):', err.message);
   }

@@ -88,8 +88,9 @@ async function startStreaming(deviceIndex, channel, gain) {
   if (gain !== undefined && gain !== null) {
     payload.gain = gain;
   }
-  console.log(`[dab-backend] Starting streaming: device=${deviceIndex}, channel=${channel}, gain=${gain !== undefined ? gain : 'default'}`);
-  return httpRequest('POST', url, payload);
+  const result = await httpRequest('POST', url, payload);
+  console.log(`[dab-backend] Starting streaming: device=${deviceIndex}, channel=${channel}, gain=${result.gain !== undefined ? result.gain : (gain !== undefined ? gain : 'server-default')}`);
+  return result;
 }
 
 /**
