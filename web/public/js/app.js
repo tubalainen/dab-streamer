@@ -78,7 +78,7 @@ function initRadioMode() {
                 <div class="confirm-overlay" id="reset-overlay"></div>
                 <div class="confirm-content">
                     <h3>Reset Configuration</h3>
-                    <p>This will stop playback, release all device locks, and return to the setup wizard.</p>
+                    <p>This will stop playback, erase all stored data (except station logos), re-detect RTL-SDR devices, and restart the setup wizard from scratch.</p>
                     <div class="form-group">
                         <label for="reset-password">Admin Password</label>
                         <input type="password" id="reset-password" class="form-control" placeholder="Enter admin password">

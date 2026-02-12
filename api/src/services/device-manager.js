@@ -215,6 +215,20 @@ function reapStaleLocks() {
 }
 
 /**
+ * Delete the cached devices.json so the next GET /api/devices auto-probes.
+ */
+function clearDevices() {
+  try {
+    if (fs.existsSync(config.DEVICES_FILE)) {
+      fs.unlinkSync(config.DEVICES_FILE);
+      console.log('[device-manager] devices.json cleared');
+    }
+  } catch (err) {
+    console.error('[device-manager] Error clearing devices.json:', err.message);
+  }
+}
+
+/**
  * Update a device's label in devices.json.
  */
 function setDeviceLabel(index, label) {
@@ -276,4 +290,5 @@ module.exports = {
   getLock,
   reapStaleLocks,
   setDeviceLabel,
+  clearDevices,
 };
