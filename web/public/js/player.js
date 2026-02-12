@@ -95,8 +95,8 @@ export function play(sid, stationName = null) {
     const bufferHandler = () => startPlayback();
     audioEl.addEventListener('canplaythrough', bufferHandler);
 
-    // Fallback: start after 2 seconds even if canplaythrough hasn't fired (common for live streams)
-    const bufferTimeout = setTimeout(() => startPlayback(), 2000);
+    // Fallback: start after 4 seconds even if canplaythrough hasn't fired (common for live streams)
+    const bufferTimeout = setTimeout(() => startPlayback(), 4000);
 }
 
 /**
