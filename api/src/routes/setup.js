@@ -97,10 +97,10 @@ router.post('/reset', async (req, res) => {
       deviceManager.releaseLock(idx);
     }
 
-    // Optionally clear scan data
-    if (!config.KEEP_SCAN_DATA_ON_RESET) {
-      channelStore.clearScanResults();
-    }
+    // Clear all stored data (scan results and cached devices)
+    // Logos are intentionally preserved
+    channelStore.clearScanResults();
+    deviceManager.clearDevices();
 
     // Reset the setup state
     setupStore.resetSetup();

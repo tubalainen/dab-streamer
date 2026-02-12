@@ -72,8 +72,10 @@ async function loadDevices() {
     render();
 
     try {
-        const result = await api.getDevices();
-        devices = result.devices || result || [];
+        // Always probe for fresh devices (re-detects connected RTL-SDR hardware)
+        const probeResult = await api.probeDevices();
+        const result = probeResult.devices || probeResult || [];
+        devices = Array.isArray(result) ? result : [];
 
         // Auto-select if only one device
         if (devices.length === 1) {
