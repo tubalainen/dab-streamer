@@ -8,6 +8,10 @@ import { getDLS } from './api.js';
 
 let containerEl = null;
 let currentInfo = null;
+let castDeviceName = null; // non-null when casting
+
+// Cast icon SVG (simplified Chromecast icon)
+const CAST_ICON = `<svg viewBox="0 0 24 24"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>`;
 
 // DLS polling state
 let dlsInterval = null;
@@ -43,6 +47,33 @@ export function initNowPlaying(container) {
  */
 export function onDlsChange(cb) {
     dlsCallback = cb;
+}
+
+/**
+ * Set or clear the Cast status badge.
+ * @param {string|null} deviceName - Cast device name, or null to clear
+ */
+export function setCastStatus(deviceName) {
+    castDeviceName = deviceName || null;
+    // Update badge in-place without full re-render (avoids resetting logo/DLS)
+    const badge = document.getElementById('now-playing-cast-badge');
+    if (castDeviceName) {
+        if (badge) {
+            badge.innerHTML = `${CAST_ICON} Casting to ${escapeHtml(castDeviceName)}`;
+        } else {
+            // Insert badge into DOM if it doesn't exist
+            const label = document.querySelector('.now-playing-label');
+            if (label) {
+                const badgeEl = document.createElement('div');
+                badgeEl.className = 'now-playing-cast-badge';
+                badgeEl.id = 'now-playing-cast-badge';
+                badgeEl.innerHTML = `${CAST_ICON} Casting to ${escapeHtml(castDeviceName)}`;
+                label.parentNode.insertBefore(badgeEl, label);
+            }
+        }
+    } else {
+        if (badge) badge.remove();
+    }
 }
 
 /**
@@ -99,6 +130,7 @@ function render() {
             <div class="now-playing-logo" id="now-playing-logo">
                 <div class="now-playing-logo-fallback">${FALLBACK_RADIO_ICON}</div>
             </div>
+            ${castDeviceName ? `<div class="now-playing-cast-badge" id="now-playing-cast-badge">${CAST_ICON} Casting to ${escapeHtml(castDeviceName)}</div>` : ''}
             <div class="now-playing-label">Now Playing</div>
             <div class="now-playing-station">${escapeHtml(info.stationName || 'Unknown Station')}</div>
             <div class="now-playing-dls" id="now-playing-dls">${escapeHtml(currentDlsText)}</div>

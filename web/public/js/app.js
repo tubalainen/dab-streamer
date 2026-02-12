@@ -9,15 +9,19 @@
 import * as api from './api.js';
 import { escapeHtml, getEnsembleLabel } from './utils.js';
 import { initWizard } from './wizard.js';
-import { initPlayer, play, stop, setStationName, setDls } from './player.js';
+import { initPlayer, play, stop, setStationName, setDls, setVolume, pauseLocal, resumeLocal, getCurrentSid, getCurrentStationName, getState } from './player.js';
 import { initChannelList, loadChannels, setActiveStation } from './channels.js';
-import { initNowPlaying, update as updateNowPlaying, clear as clearNowPlaying, onDlsChange } from './nowplaying.js';
+import { initNowPlaying, update as updateNowPlaying, clear as clearNowPlaying, onDlsChange, setCastStatus } from './nowplaying.js';
+import { initCast, isCasting, castStream, stopCastMedia, setCastVolume } from './cast.js';
 
 const appEl = document.getElementById('app');
 
 // Current radio state
 let setupData = null;
 let channelData = [];
+
+// Initialize Cast SDK early — it loads asynchronously and needs the callback registered first
+initCast(onCastSessionChange);
 
 document.addEventListener('DOMContentLoaded', async () => {
     try {
@@ -73,6 +77,9 @@ function initRadioMode() {
             </div>
 
             <div class="player-controls" id="player-container"></div>
+            <div class="cast-button-container" id="cast-container">
+                <google-cast-launcher></google-cast-launcher>
+            </div>
 
             <div class="confirm-modal" id="reset-modal" style="display:none;">
                 <div class="confirm-overlay" id="reset-overlay"></div>
@@ -214,8 +221,16 @@ function onStationSelect(sid, stationName, transponder) {
     // Update active station in sidebar
     setActiveStation(sid);
 
-    // Start playback
-    play(sid, stationName);
+    // Start playback — route to Cast if active, otherwise play locally
+    if (isCasting()) {
+        pauseLocal();
+        const logoUrl = `${window.location.origin}/slide/${sid}`;
+        castStream(sid, stationName, logoUrl).catch((err) => {
+            console.error('[app] Failed to cast stream:', err);
+        });
+    } else {
+        play(sid, stationName);
+    }
 }
 
 function onStationInfoLoaded(info) {
@@ -249,6 +264,28 @@ function findServiceCodec(sid, transponder) {
     if (!transponder || !transponder.services) return null;
     const svc = transponder.services.find(s => String(s.sid) === String(sid));
     return svc ? svc.codec : null;
+}
+
+// ─── Google Cast ────────────────────────────────────────
+
+function onCastSessionChange(connected, deviceName) {
+    if (connected) {
+        // Cast session started — transfer current playback to Chromecast
+        const sid = getCurrentSid();
+        const stationName = getCurrentStationName();
+        if (sid) {
+            pauseLocal();
+            const logoUrl = `${window.location.origin}/slide/${sid}`;
+            castStream(sid, stationName, logoUrl).catch((err) => {
+                console.error('[app] Failed to cast stream:', err);
+            });
+        }
+        setCastStatus(deviceName);
+    } else {
+        // Cast session ended — resume local playback
+        setCastStatus(null);
+        resumeLocal();
+    }
 }
 
 // ─── Status Polling ─────────────────────────────────────

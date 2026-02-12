@@ -116,6 +116,45 @@ export function stop() {
 }
 
 /**
+ * Pause local audio without clearing state (keeps currentSid/stationName intact).
+ * Used when switching to Cast playback.
+ */
+export function pauseLocal() {
+    if (!audioEl) return;
+    audioEl.pause();
+    audioEl.removeAttribute('src');
+    audioEl.load();
+    state = 'stopped';
+    // Deliberately keep currentSid and currentStationName
+    render();
+}
+
+/**
+ * Resume local playback for the current station.
+ * Used when a Cast session ends and we want to resume locally.
+ */
+export function resumeLocal() {
+    if (!audioEl || !currentSid) return;
+    play(currentSid, currentStationName);
+}
+
+/**
+ * Get the current service ID.
+ * @returns {string|number|null}
+ */
+export function getCurrentSid() {
+    return currentSid;
+}
+
+/**
+ * Get the current station name.
+ * @returns {string|null}
+ */
+export function getCurrentStationName() {
+    return currentStationName;
+}
+
+/**
  * Set volume level.
  * @param {number} level - Volume from 0.0 to 1.0
  * @param {boolean} skipRender - If true, skip full re-render (used during slider drag)
