@@ -14,8 +14,9 @@ A Dockerized web application for receiving and streaming DAB+ digital radio usin
 - **Station logos** — displays station logos from welle-cli MOT/slideshow data when available, with a fallback radio icon
 - **Channel scanning** — automatic scan of all 38 DAB Band III channels (5A through 13F) with live progress
 - **Service filtering** — automatically filters out non-audio services (SPI, EPG, TPEG, etc.) showing only radio stations
+- **Google Cast (Chromecast)** — cast any DAB+ station to Chromecast devices on the local network with station name and logo metadata; seamless handoff between local and cast playback
 - **Dark theme UI** — clean, modern interface with bottom-docked player controls
-- **Reset configuration** — return to the setup wizard with a confirmation modal; scan data is preserved
+- **Reset configuration** — full factory reset: stops playback, erases all stored data (except station logos), re-detects RTL-SDR devices, and restarts the setup wizard from scratch
 
 ## Architecture
 
@@ -137,7 +138,7 @@ Available configuration options:
 | `DEFAULT_GAIN` | `-1` | RTL-SDR gain (-1 = AGC, 0-49 = manual dB) |
 | `SCAN_TIMEOUT` | `10` | Seconds to wait per channel during scan |
 | `LOCK_REAPER_INTERVAL` | `30` | Seconds between stale lock cleanup |
-| `KEEP_SCAN_DATA_ON_RESET` | `true` | Preserve scan data when restarting setup wizard |
+| `KEEP_SCAN_DATA_ON_RESET` | `true` | _(Deprecated — reset now always clears all data)_ |
 | `ADMIN_PASSWORD` | _(empty)_ | Admin password required to reset configuration. When empty, no password is required |
 | `CORS_ORIGIN` | _(unset)_ | Explicit allowed CORS origin (e.g. `http://myhost:8080`). When unset, only same-host origins are allowed |
 
@@ -198,9 +199,20 @@ After setup, the main radio interface provides:
 - **Audio player** (bottom bar) — play/stop control and volume slider, with pre-buffering for smoother playback
 - **Status bar** — connection status, active device, and application info
 
+### Google Cast (Chromecast)
+
+When a Chromecast device is available on the local network, a Cast icon appears in the player bar. Click it to select a device and start casting the current station.
+
+- Station name and logo are displayed on the Chromecast screen
+- Switching stations while casting automatically loads the new stream on the Chromecast
+- Disconnecting from Cast resumes local playback automatically
+- The Cast button only appears in Chrome when the page is served over HTTPS
+
+> **Note:** The Google Cast SDK requires the sender page to be served over HTTPS. If you access the UI over plain HTTP, Cast will not be available but the app works normally. Use a reverse proxy (e.g., Caddy, Traefik, Nginx Proxy Manager) to add TLS termination.
+
 ### Resetting Configuration
 
-Click the **Reset Configuration** button in the header. A modal will prompt for the admin password (if `ADMIN_PASSWORD` is configured). Playback will stop, device locks will be released, and the setup wizard will restart. Previous scan data is preserved by default.
+Click the **Reset Configuration** button in the header. A modal will prompt for the admin password (if `ADMIN_PASSWORD` is configured). This performs a full reset: playback stops, all stored data is erased (scan results, device cache, setup state), RTL-SDR devices are re-detected from scratch, and the setup wizard restarts. Station logos are preserved.
 
 ## Multi-Device Support
 
@@ -283,8 +295,9 @@ dab-streamer/
 │           ├── wizard.js       # Setup wizard controller (scan + manual channel)
 │           ├── devices.js      # Device card rendering
 │           ├── player.js       # HTML5 audio controller with pre-buffering
+│           ├── cast.js         # Google Cast (Chromecast) integration
 │           ├── channels.js     # Station list UI with service filtering
-│           ├── nowplaying.js   # Now-playing display with station logos
+│           ├── nowplaying.js   # Now-playing display with station logos and Cast status
 │           ├── scanner.js      # Scan progress UI
 │           ├── logo-cache.js   # Station logo blob URL cache
 │           └── utils.js        # Shared utilities (escapeHtml, filtering, labels)
@@ -438,6 +451,7 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 | API framework | Express | 4.x |
 | Web server | nginx | Alpine |
 | Frontend | Vanilla HTML5/CSS3/JS | ES Modules |
+| Google Cast | [Web Sender SDK](https://developers.google.com/cast/docs/web_sender) | v1 (CDN) |
 | Containerization | Docker Compose | v2 |
 | SDR library | librtlsdr | System package |
 
@@ -446,7 +460,7 @@ Each channel corresponds to a center frequency in the 174-240 MHz range. A trans
 The following hardening measures are applied:
 
 - **No privileged mode** — the dab-server container uses explicit USB device mapping (`/dev/bus/usb`) instead of Docker's `privileged` flag
-- **CORS restriction** — the API only reflects `Access-Control-Allow-Origin` for same-host origins (configurable via `CORS_ORIGIN`)
+- **CORS restriction** — the API only reflects `Access-Control-Allow-Origin` for same-host origins (configurable via `CORS_ORIGIN`); the `/stream/` and `/slide/` endpoints allow all origins (`*`) for Google Cast compatibility
 - **Request body limit** — Express JSON parser limited to 1 MB to mitigate oversized payloads
 - **Input validation** — DAB channel names, device indices, gain values, and service IDs are validated server-side before use
 - **HTTP timeouts** — upstream requests to the dab-server time out after 10 seconds; curl calls in scan scripts have connect and max-time limits

@@ -77,9 +77,6 @@ function initRadioMode() {
             </div>
 
             <div class="player-controls" id="player-container"></div>
-            <div class="cast-button-container" id="cast-container">
-                <google-cast-launcher></google-cast-launcher>
-            </div>
 
             <div class="confirm-modal" id="reset-modal" style="display:none;">
                 <div class="confirm-overlay" id="reset-overlay"></div>
