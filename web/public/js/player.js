@@ -239,6 +239,7 @@ function render() {
             <div class="player-volume-icon">${isMuted ? ICON_VOLUME_MUTE : ICON_VOLUME}</div>
             <input type="range" class="player-volume-slider" min="0" max="100" value="${Math.round(currentVolume * 100)}">
         </div>
+        <google-cast-launcher></google-cast-launcher>
     `;
 
     // Play/stop button
