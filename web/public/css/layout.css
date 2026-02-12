@@ -13,6 +13,7 @@
         "status status";
     height: 100vh;
     overflow: hidden;
+    position: relative;
 }
 
 /* ============================================
@@ -400,6 +401,7 @@
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-4) var(--space-6);
+    padding-right: calc(var(--space-6) + 36px); /* extra space for Cast button */
     background-color: var(--bg-secondary);
     border-top: 1px solid var(--border-default);
 }
@@ -523,6 +525,52 @@
     border-radius: 50%;
     background: var(--text-primary);
     cursor: pointer;
+}
+
+/* ============================================
+   Google Cast Button
+   ============================================ */
+
+.cast-button-container {
+    position: absolute;
+    bottom: calc(var(--status-bar-height) + var(--player-height) / 2);
+    right: var(--space-6);
+    transform: translateY(50%);
+    display: flex;
+    align-items: center;
+    z-index: 5;
+}
+
+google-cast-launcher {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: inline-block;
+    --connected-color: var(--accent-blue);
+    --disconnected-color: var(--text-secondary);
+}
+
+/* ============================================
+   Cast Status Badge (Now Playing)
+   ============================================ */
+
+.now-playing-cast-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-3);
+    background-color: var(--accent-blue-dim);
+    color: var(--accent-blue);
+    border-radius: var(--radius-full);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: var(--space-3);
+}
+
+.now-playing-cast-badge svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
 }
 
 /* ============================================
